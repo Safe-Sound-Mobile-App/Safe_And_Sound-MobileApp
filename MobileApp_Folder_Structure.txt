@@ -1,0 +1,91 @@
+Safe_And_Sound-MobileApp/
+├── .expo/
+│   └── ... (Folders and files managed by Expo CLI, such as cache, build artifacts)
+├── assets/
+│   ├── images/
+│   │   └── ... (Various images used in the app)
+│   ├── icons/
+│   │   └── ... (Various icons used in the app)
+│   ├── fonts/
+│   │   └── ... (Custom font files)
+│   └── ... (Other assets)
+├── node_modules/
+│   └── ... (Dependencies or libraries installed via npm or yarn)
+├── src/
+│   ├── navigation/
+│   │   ├── AuthNavigator.tsx: Navigator managing Authentication screens (Login, Register, Forgot Password)
+│   │   ├── AppNavigator.tsx: Main navigator of the app after login (can be Stack, Tab, or Drawer)
+│   │   └── navigationUtils.ts: Helper functions for managing navigation
+│   ├── pages/
+│   │   ├── Authentication/
+│   │   │   ├── caregiver/
+│   │   │   │   ├── SignIn.tsx: SignIn screen with OAuth buttons
+│   │   │   │   ├── SignUp.tsx: SignUp screen
+│   │   │   │   ├── SignOut.tsx: SignOut screen
+│   │   │   │   ├── ForgotPassword.tsx: Reset Password screen
+│   │   │   │   └── AuthLoadingPage.tsx: Loading screen to check Auth State on app startup
+│   │   │   ├── elder/
+│   │   │   │   ├── SignIn.tsx: SignIn screen with OAuth buttons
+│   │   │   │   ├── SignUp.tsx: SignUp screen
+│   │   │   │   ├── SignOut.tsx: SignOut screen
+│   │   │   │   ├── ForgotPassword.tsx: Reset Password screen
+│   │   │   │   └── AuthLoadingPage.tsx: Loading screen to check Auth State on app startup
+│   │   │   └── ... (Other authentication-related pages)
+│   │   ├── Main/
+│   │   │   ├── caregiver/
+│   │   │   │   ├── HomeScreen.tsx: Main screen after login
+│   │   │   │   └── ... (Other main app screens)
+│   │   │   ├── elder/
+│   │   │   │   ├── HomeScreen.tsx: Main screen after login
+│   │   │   │   └── ... (Other main app screens)
+│   │   │   └── ... (Other main app pages)
+│   │   └── ... (Other pages not in Auth or Main groups)
+│   ├── components/
+│   │   ├── Auth/
+│   │   │   ├── OAuthButton.tsx: Login button specific to OAuth providers (with logos)
+│   │   │   ├── AuthInput.tsx: Input fields used in authentication screens
+│   │   │   └── ... (Other components used in the Auth section)
+│   │   ├── UI/
+│   │   │   ├── Button.tsx: Reusable UI button component
+│   │   │   ├── Input.tsx: Reusable UI input field component
+│   │   │   ├── Card.tsx: Reusable UI card component
+│   │   │   └── ... (Common UI components)
+│   │   └── ... (Other reusable components)
+│   ├── hooks/
+│   │   ├── useAuth.ts: Custom Hook for managing Auth State (isLoggedIn, user data, token) and Login/Logout functions
+│   │   ├── useProtectedRoute.ts: Custom Hook to check Auth State before accessing certain pages
+│   │   └── ... (Other custom hooks)
+│   ├── services/
+│   │   ├── auth.ts: Functions related to Authentication (calling OAuth API, managing tokens)
+│   │   ├── api.ts: Functions for calling the main app API (may include interceptors for attaching tokens)
+│   │   └── userService.ts: Functions related to managing User Data
+│   ├── store/ (If using State Management - Redux example)
+│   │   ├── index.ts: Root Reducer and Store Configuration
+│   │   ├── reducers/
+│   │   │   ├── authReducer.ts: Reducer for Auth State
+│   │   │   └── ... (Other reducers)
+│   │   ├── actions/
+│   │   │   ├── authActions.ts: Actions for Auth
+│   │   │   └── ... (Other actions)
+│   │   ├── selectors/
+│   │   │   ├── authSelectors.ts: Selectors for retrieving Auth State
+│   │   │   └── ... (Other selectors)
+│   │   ├── types/
+│   │   │   ├── authTypes.ts: Types and Interfaces related to Auth
+│   │   │   └── ... (Other types)
+│   │   └── ... (Other store modules)
+│   ├── utils/
+│   │   ├── helpers.ts: General helper functions (e.g., Date formatting, Email validation)
+│   │   ├── constants.ts: Constant values used in the app
+│   │   └── ... (Other utility functions)
+│   ├── config/
+│   │   ├── apiConfig.ts: Base URL of the API, Client IDs for OAuth Providers
+│   │   └── theme.ts: App's theme definition (colors, font sizes)
+│   └── App.tsx: Root Component of the app, managing Navigation Container and potentially State Management/Context Providers
+├── app.json: Configuration file for the Expo project (app name, icon, splash screen)
+├── index.tsx: Entry point file that registers the root component of the application. It typically imports `App.tsx` and uses `AppRegistry.registerComponent` to link the app's name (from `app.json`) with the root component.
+├── package.json: Metadata file for the project, scripts, dependencies
+├── package-lock.json (for npm): Records the exact versions of installed dependencies
+├── .gitignore: Specifies files and folders that Git should ignore
+├── README.md: Project description
+└── tsconfig.json: Configuration for the TypeScript Compiler

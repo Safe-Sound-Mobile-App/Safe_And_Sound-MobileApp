@@ -13,6 +13,7 @@ Safe_And_Sound-MobileApp/
 │   └── ... (Dependencies or libraries installed via npm or yarn)
 ├── src/
 │   ├── navigation/
+│   │   ├── styles/
 │   │   ├── AuthNavigator.tsx: Navigator managing Authentication screens (Login, Register, Forgot Password)
 │   │   ├── AppNavigator.tsx: Main navigator of the app after login (can be Stack, Tab, or Drawer)
 │   │   └── navigationUtils.ts: Helper functions for managing navigation
@@ -33,10 +34,16 @@ Safe_And_Sound-MobileApp/
 │   │   │   └── ... (Other authentication-related pages)
 │   │   ├── Main/
 │   │   │   ├── caregiver/
-│   │   │   │   ├── HomeScreen.tsx: Main screen after login
+│   │   │   │   ├── HomePage.tsx: Main screen after login
+│   │   │   │   ├── NotificationsPage.tsx: Caregiver Notification page
+│   │   │   │   ├── ProfilePage.tsx: Caregiver profile page
+│   │   │   │   ├── SettingsPage.tsx: Caregiver setting page
 │   │   │   │   └── ... (Other main app screens)
 │   │   │   ├── elder/
-│   │   │   │   ├── HomeScreen.tsx: Main screen after login
+│   │   │   │   ├── HomePage.tsx: Main screen after login
+│   │   │   │   ├── NotificationsPage.tsx: Elder Notification page
+│   │   │   │   ├── ProfilePage.tsx: Elder profile page
+│   │   │   │   ├── SettingsPage.tsx: Elder setting page
 │   │   │   │   └── ... (Other main app screens)
 │   │   │   └── ... (Other main app pages)
 │   │   └── ... (Other pages not in Auth or Main groups)

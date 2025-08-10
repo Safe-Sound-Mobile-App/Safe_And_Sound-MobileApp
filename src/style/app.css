@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import url('https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@400..800&display=swap');
+
+body {
+  font-family: "Baloo Bhaijaan 2", sans-serif;
+}
+
+/*Text Format*/
+p {
+  font-family: "Baloo Bhaijaan 2", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+  font-size: 1rem;
+  color: #363636; /* Tailwind gray-700 */
+}
+
+h1 {
+  font-family: "Baloo Bhaijaan 2", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+  font-size: 3rem;
+  font-weight: bold;
+  color: #363636; /* Tailwind gray-700 */
+}
+
+h2 {
+  font-family: "Baloo Bhaijaan 2", sans-serif;
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #363636; /* Tailwind gray-700 */
+}
+
+h3 {
+  font-family: "Baloo Bhaijaan 2", sans-serif;
+  font-size: 2rem;
+  font-weight: bold;
+  color: #363636; /* Tailwind gray-700 */
+}
+
+h4 {
+  font-family: "Baloo Bhaijaan 2", sans-serif;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #363636; /* Tailwind gray-700 */
+}
+
+h5 {
+  font-family: "Baloo Bhaijaan 2", sans-serif;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #363636; /* Tailwind gray-700 */
+}

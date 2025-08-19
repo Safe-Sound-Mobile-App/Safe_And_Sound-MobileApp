@@ -1,20 +1,39 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import * as React from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import Home from "./screens/Home";
+import NewPage from "./screens/NewPage";
+import TestPage from "./screens/TestPage";
+
+export type RootStackParamList = {
+  Home: undefined;
+  NewPage: undefined;
+  TestPage: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+
+const linking = {
+    prefixes: [], // optional
+    config: {
+        screens: {
+            Home: "",           // This maps to "/"
+            NewPage: "new",     // This maps to "/new"
+            TestPage: "test",
+        },
+    },
+};
+
 
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text className="text-green-500">Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    // @ts-ignore
+    return (
+      <NavigationContainer linking={linking}>
+        <Stack.Navigator>
+          <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen name="NewPage" component={NewPage} />
+          <Stack.Screen name="TestPage" component={TestPage} />
+        </Stack.Navigator>
+      </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

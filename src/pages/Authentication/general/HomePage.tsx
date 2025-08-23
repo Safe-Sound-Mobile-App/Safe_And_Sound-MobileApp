@@ -1,17 +1,16 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, Button} from 'react-native';
 import { styles } from '../../../global_style/style';
 import { Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../../../App";
 // import { useFonts, BalooBhaijaan2_400Regular, BalooBhaijaan2_600SemiBold } from '@expo-google-fonts/baloo-bhaijaan-2';
 
-export default function App() {
-  const handleSignIn = () => {
-    console.log("Navigating to SignIn.tsx...");
-    // navigation.navigate('SignIn');
-  };
+type Props = NativeStackScreenProps<RootStackParamList, "Home">;
 
+export default function Home({ navigation }: Props) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#1a202c' }}>
       <View style={styles.container}>
@@ -50,7 +49,7 @@ export default function App() {
           {/* Sign In button */}
           <TouchableOpacity
             style={styles.signInButton}
-            onPress={handleSignIn}
+            onPress={() => navigation.navigate("SignIn")}
             activeOpacity={0.8}
           >
             <Text style={styles.signInButtonText}>SIGN IN</Text>

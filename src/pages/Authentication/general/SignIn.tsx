@@ -93,7 +93,7 @@ export default function SignIn({ navigation }: Props) {
         {/* Sign Up Link */}
         <View style={signInStyles.signUpContainer}>
           <Text style={signInStyles.signUpText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={handleSignUp}>
+          <TouchableOpacity onPress={() => navigation.navigate("SignUp")}>
             <Text style={signInStyles.signUpLink}>SIGN UP</Text>
           </TouchableOpacity>
         </View>

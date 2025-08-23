@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import Home from "./pages/Authentication/general/HomePage";
 import SignIn from "./pages/Authentication/general/SignIn";
+import SignUp from "./pages/Authentication/general/SignUp";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -35,6 +36,7 @@ export default function App() {
         >
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="SignIn" component={SignIn} />
+          <Stack.Screen name="SignUp" component={SignUp} />
         </Stack.Navigator>
       </NavigationContainer>
   );

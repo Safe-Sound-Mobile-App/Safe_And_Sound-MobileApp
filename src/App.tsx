@@ -4,11 +4,13 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import Home from "./pages/Authentication/general/HomePage";
 import SignIn from "./pages/Authentication/general/SignIn";
 import SignUp from "./pages/Authentication/general/SignUp";
+import RoleSelection from "./pages/Authentication/general/RoleSelection";
 
 export type RootStackParamList = {
   Home: undefined;
   SignIn: undefined;
   SignUp: undefined;
+  RoleSelection: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -20,6 +22,7 @@ const linking = {
             Home: "",           // This maps to "/"
             SignIn: "SignIn",     // This maps to "/new"
             SignUp: "SignUp",
+            RoleSelection: "RoleSelection", // This maps to "/edit/:id"
         },
     },
 };
@@ -37,6 +40,7 @@ export default function App() {
           <Stack.Screen name="Home" component={Home} />
           <Stack.Screen name="SignIn" component={SignIn} />
           <Stack.Screen name="SignUp" component={SignUp} />
+          <Stack.Screen name="RoleSelection" component={RoleSelection} />
         </Stack.Navigator>
       </NavigationContainer>
   );

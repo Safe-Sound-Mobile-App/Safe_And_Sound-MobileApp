@@ -21,7 +21,7 @@ export default function SignUp({ navigation }: Props) {
 
   const handleSignUp = () => {
     console.log('Navigating to SignUp...');
-    // navigation.navigate('SignUp');
+    navigation.navigate("RoleSelection");
   };
 
   const handleForgotPassword = () => {
@@ -38,7 +38,7 @@ export default function SignUp({ navigation }: Props) {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
       <View style={signUpStyles.signUpContainer}>
         
-        {/* Sign In Title */}
+        {/* Sign Up Title */}
         <Text style={signUpStyles.signUpTitle}>SIGN UP</Text>
         
         {/* Username Input */}
@@ -107,16 +107,16 @@ export default function SignUp({ navigation }: Props) {
           <Text style={signUpStyles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
 
-        {/* Sign In Button */}
+        {/* Sign Up Button */}
         <TouchableOpacity
           style={signUpStyles.signUpSubmitButton}
-          onPress={handleSignIn}
+          onPress={handleSignUp}
           activeOpacity={0.8}
         >
           <Text style={signUpStyles.signUpSubmitButtonText}>SIGN UP</Text>
         </TouchableOpacity>
 
-        {/* Sign Up Link */}
+        {/* Sign In Link */}
         <View style={signUpStyles.signInContainer}>
           <Text style={signUpStyles.signInText}>Already have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, Animated, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -13,6 +13,7 @@ export default function RoleSelection({ navigation }: Props) {
   const [selectedRole, setSelectedRole] = useState<'elder' | 'caregiver' | null>(null);
   const [elderAnimation] = useState(new Animated.Value(0));
   const [caregiverAnimation] = useState(new Animated.Value(0));
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
 
   const handleRoleSelect = (role: 'elder' | 'caregiver') => {
     setSelectedRole(role);
@@ -129,7 +130,11 @@ export default function RoleSelection({ navigation }: Props) {
         </View>
         
         {/* Role Description Button */}
-        <TouchableOpacity style={roleSelectionStyles.descriptionButton}>
+        <TouchableOpacity
+            style={roleSelectionStyles.descriptionButton}
+            onPress={() => setShowDescriptionModal(true)}
+            activeOpacity={0.8}
+        >
           <Ionicons name="help-circle-outline" size={16} color="#6b7280" />
           <Text style={roleSelectionStyles.descriptionText}>Role Description</Text>
         </TouchableOpacity>
@@ -153,6 +158,45 @@ export default function RoleSelection({ navigation }: Props) {
         </TouchableOpacity>
         
       </View>
+
+    {/* Role Description Modal */}
+        <Modal
+          visible={showDescriptionModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowDescriptionModal(false)}
+        >
+          <View style={roleSelectionStyles.modalOverlay}>
+            <View style={roleSelectionStyles.modalContainer}>
+              <Text style={roleSelectionStyles.modalTitle}>Role Description</Text>
+              
+              <View style={roleSelectionStyles.modalContent}>
+                <View style={roleSelectionStyles.questionSection}>
+                  <Text style={roleSelectionStyles.questionText}>Why user need to select role?</Text>
+                  <View style={roleSelectionStyles.underline} />
+                </View>
+                
+                <View style={roleSelectionStyles.questionSection}>
+                  <Text style={roleSelectionStyles.questionText}>What is the elder role?</Text>
+                  <View style={roleSelectionStyles.underline} />
+                </View>
+                
+                <View style={roleSelectionStyles.questionSection}>
+                  <Text style={roleSelectionStyles.questionText}>What is the caregiver role?</Text>
+                  <View style={roleSelectionStyles.underline} />
+                </View>
+              </View>
+              
+              <TouchableOpacity
+                style={roleSelectionStyles.modalCloseButton}
+                onPress={() => setShowDescriptionModal(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={roleSelectionStyles.modalCloseButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
     </SafeAreaView>
   );
 }

@@ -1,14 +1,16 @@
 import * as React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import Home from "./screens/Home";
-import NewPage from "./screens/NewPage";
-import TestPage from "./screens/TestPage";
+import Home from "./pages/Authentication/general/HomePage";
+import SignIn from "./pages/Authentication/general/SignIn";
+import SignUp from "./pages/Authentication/general/SignUp";
+import RoleSelection from "./pages/Authentication/general/RoleSelection";
 
 export type RootStackParamList = {
   Home: undefined;
-  NewPage: undefined;
-  TestPage: undefined;
+  SignIn: undefined;
+  SignUp: undefined;
+  RoleSelection: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -18,8 +20,9 @@ const linking = {
     config: {
         screens: {
             Home: "",           // This maps to "/"
-            NewPage: "new",     // This maps to "/new"
-            TestPage: "test",
+            SignIn: "SignIn",     // This maps to "/new"
+            SignUp: "SignUp",
+            RoleSelection: "RoleSelection", // This maps to "/edit/:id"
         },
     },
 };
@@ -29,10 +32,15 @@ export default function App() {
     // @ts-ignore
     return (
       <NavigationContainer linking={linking}>
-        <Stack.Navigator>
+        <Stack.Navigator
+          screenOptions={{
+            headerShown: false, // ซ่อน header bar สำหรับทุก screen
+          }}
+        >
           <Stack.Screen name="Home" component={Home} />
-          <Stack.Screen name="NewPage" component={NewPage} />
-          <Stack.Screen name="TestPage" component={TestPage} />
+          <Stack.Screen name="SignIn" component={SignIn} />
+          <Stack.Screen name="SignUp" component={SignUp} />
+          <Stack.Screen name="RoleSelection" component={RoleSelection} />
         </Stack.Navigator>
       </NavigationContainer>
   );

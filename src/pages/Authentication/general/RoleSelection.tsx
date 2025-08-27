@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -11,9 +11,29 @@ type Props = NativeStackScreenProps<RootStackParamList, "RoleSelection">;
 
 export default function RoleSelection({ navigation }: Props) {
   const [selectedRole, setSelectedRole] = useState<'elder' | 'caregiver' | null>(null);
+  const [elderAnimation] = useState(new Animated.Value(0));
+  const [caregiverAnimation] = useState(new Animated.Value(0));
 
   const handleRoleSelect = (role: 'elder' | 'caregiver') => {
     setSelectedRole(role);
+    
+    // Animate selected role
+    const selectedAnimation = role === 'elder' ? elderAnimation : caregiverAnimation;
+    const otherAnimation = role === 'elder' ? caregiverAnimation : elderAnimation;
+    
+    // Animate to gradient
+    Animated.timing(selectedAnimation, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+    
+    // Animate other back to black
+    Animated.timing(otherAnimation, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
   };
 
   const handleConfirm = () => {
@@ -26,6 +46,18 @@ export default function RoleSelection({ navigation }: Props) {
 
   const renderRoleButton = (role: 'elder' | 'caregiver', icon: string, label: string) => {
     const isSelected = selectedRole === role;
+    const animationValue = role === 'elder' ? elderAnimation : caregiverAnimation;
+    
+    // Interpolate colors for smooth transition
+    const iconOpacity = animationValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1, 0],
+    });
+    
+    const gradientOpacity = animationValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
     
     return (
       <TouchableOpacity
@@ -36,7 +68,20 @@ export default function RoleSelection({ navigation }: Props) {
         onPress={() => handleRoleSelect(role)}
         activeOpacity={0.8}
       >
-        {isSelected ? (
+        {/* Black icon with animated opacity */}
+        <Animated.View style={[
+          roleSelectionStyles.iconContainer,
+          { opacity: iconOpacity }
+        ]}>
+          <Ionicons name={icon as any} size={40} color="#000000" />
+        </Animated.View>
+        
+        {/* Gradient icon with animated opacity */}
+        <Animated.View style={[
+          roleSelectionStyles.iconContainer,
+          roleSelectionStyles.gradientIconContainer,
+          { opacity: gradientOpacity }
+        ]}>
           <MaskedView
             style={roleSelectionStyles.iconMaskContainer}
             maskElement={
@@ -55,9 +100,7 @@ export default function RoleSelection({ navigation }: Props) {
               <Ionicons name={icon as any} size={40} color="transparent" />
             </LinearGradient>
           </MaskedView>
-        ) : (
-          <Ionicons name={icon as any} size={40} color="#000000" />
-        )}
+        </Animated.View>
         
         <Text style={[
           roleSelectionStyles.roleLabel,

@@ -72,10 +72,17 @@ export const roleSelectionStyles = StyleSheet.create({
     borderWidth: 3,
     backgroundColor: '#f0fdff',
   },
+  iconContainer: {
+    position: 'absolute',
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
   iconMaskContainer: {
     width: 40,
     height: 40,
-    marginBottom: 8,
   },
   iconMask: {
     flex: 1,
@@ -94,7 +101,7 @@ export const roleSelectionStyles = StyleSheet.create({
     fontFamily: 'BalooBhaijaan2_400Regular',
     color: '#374151',
     textAlign: 'center',
-    marginTop: 8,
+    marginTop: 65,
     letterSpacing: 0.3,
   },
   selectedRoleLabel: {

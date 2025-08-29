@@ -5,12 +5,14 @@ import Home from "./pages/Authentication/general/HomePage";
 import SignIn from "./pages/Authentication/general/SignIn";
 import SignUp from "./pages/Authentication/general/SignUp";
 import RoleSelection from "./pages/Authentication/general/RoleSelection";
+import ElderInfoForm from "./pages/Authentication/elder/ElderInfoForm";
 
 export type RootStackParamList = {
   Home: undefined;
   SignIn: undefined;
   SignUp: undefined;
   RoleSelection: undefined;
+  ElderInfoForm: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -23,6 +25,7 @@ const linking = {
             SignIn: "SignIn",     // This maps to "/new"
             SignUp: "SignUp",
             RoleSelection: "RoleSelection", // This maps to "/edit/:id"
+            ElderInfoForm: "ElderInfoForm",
         },
     },
 };
@@ -41,6 +44,7 @@ export default function App() {
           <Stack.Screen name="SignIn" component={SignIn} />
           <Stack.Screen name="SignUp" component={SignUp} />
           <Stack.Screen name="RoleSelection" component={RoleSelection} />
+          <Stack.Screen name="ElderInfoForm" component={ElderInfoForm} />
         </Stack.Navigator>
       </NavigationContainer>
   );

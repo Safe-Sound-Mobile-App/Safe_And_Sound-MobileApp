@@ -24,6 +24,13 @@ export default function RoleSelection({ navigation }: Props) {
     caregiver: false,
   });
 
+  // Animation values for accordion sections
+  const [sectionAnimations] = useState({
+    why: new Animated.Value(0),
+    elder: new Animated.Value(0),
+    caregiver: new Animated.Value(0),
+  });
+
   const handleRoleSelect = (role: 'elder' | 'caregiver') => {
     setSelectedRole(role);
     
@@ -55,22 +62,75 @@ export default function RoleSelection({ navigation }: Props) {
   };
 
   const toggleSection = (sectionKey: string) => {
-    setExpandedSections(prev => {
-      // Create new state object
-      const newState = {
-        why: false,
-        elder: false,
-        caregiver: false,
-      };
-      
-      // If the clicked section is currently closed, open it
-      // If it's currently open, keep it closed (all sections will be false)
-      if (!prev[sectionKey]) {
-        newState[sectionKey] = true;
+    const currentlyExpanded = expandedSections[sectionKey];
+    
+    // First, collapse all other sections with delay
+    Object.keys(expandedSections).forEach((key) => {
+      if (key !== sectionKey && expandedSections[key]) {
+        Animated.timing(sectionAnimations[key], {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: false,
+        }).start(() => {
+          // Update state after animation completes
+          setExpandedSections(prev => ({
+            ...prev,
+            [key]: false
+          }));
+        });
       }
-      
-      return newState;
     });
+    
+    // Then handle the clicked section
+    if (currentlyExpanded) {
+      // If currently expanded, collapse it
+      Animated.timing(sectionAnimations[sectionKey], {
+        toValue: 0,
+        duration: 50,
+        useNativeDriver: false,
+      }).start(() => {
+        setExpandedSections(prev => ({
+          ...prev,
+          [sectionKey]: false
+        }));
+      });
+    } else {
+      // If currently collapsed, expand it after a delay
+      setTimeout(() => {
+        setExpandedSections(prev => ({
+          ...prev,
+          [sectionKey]: true
+        }));
+        
+        Animated.timing(sectionAnimations[sectionKey], {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }).start();
+      }, 150); // Delay before expanding
+    }
+  };
+
+  const renderAnimatedSection = (sectionKey: string, content: React.ReactNode) => {
+    const animatedHeight = sectionAnimations[sectionKey].interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 100], // Adjust this value based on your content height
+    });
+
+    const opacity = sectionAnimations[sectionKey].interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, 0, 1],
+    });
+
+    return (
+      <Animated.View style={{
+        height: animatedHeight,
+        opacity: opacity,
+        overflow: 'hidden',
+      }}>
+        {content}
+      </Animated.View>
+    );
   };
 
   const renderRoleButton = (role: 'elder' | 'caregiver', imageSource: any, label: string) => {
@@ -107,7 +167,7 @@ export default function RoleSelection({ navigation }: Props) {
             style={{ 
               width: 40, 
               height: 40,
-              tintColor: '#000000', // Apply black tint to the image
+              tintColor: '#000000',
             }}
             resizeMode="contain"
           />
@@ -220,14 +280,23 @@ export default function RoleSelection({ navigation }: Props) {
                   activeOpacity={0.7}
                 >
                   <Text style={roleSelectionStyles.questionText}>Why user need to select role?</Text>
-                  <Ionicons 
-                    name={expandedSections.why ? "chevron-up" : "chevron-down"} 
-                    size={20} 
-                    color="#6b7280" 
-                  />
+                  <Animated.View style={{
+                    transform: [{
+                      rotate: sectionAnimations.why.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '180deg'],
+                      })
+                    }]
+                  }}>
+                    <Ionicons 
+                      name="chevron-down"
+                      size={20} 
+                      color="#6b7280" 
+                    />
+                  </Animated.View>
                 </TouchableOpacity>
                 <View style={roleSelectionStyles.underline} />
-                {expandedSections.why && (
+                {renderAnimatedSection('why',
                   <View style={roleSelectionStyles.answerContainer}>
                     <Text style={roleSelectionStyles.answerText}>
                       Role selection helps customize the app experience based on your specific needs. 
@@ -245,14 +314,23 @@ export default function RoleSelection({ navigation }: Props) {
                   activeOpacity={0.7}
                 >
                   <Text style={roleSelectionStyles.questionText}>What is the elder role?</Text>
-                  <Ionicons 
-                    name={expandedSections.elder ? "chevron-up" : "chevron-down"} 
-                    size={20} 
-                    color="#6b7280" 
-                  />
+                  <Animated.View style={{
+                    transform: [{
+                      rotate: sectionAnimations.elder.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '180deg'],
+                      })
+                    }]
+                  }}>
+                    <Ionicons 
+                      name="chevron-down"
+                      size={20} 
+                      color="#6b7280" 
+                    />
+                  </Animated.View>
                 </TouchableOpacity>
                 <View style={roleSelectionStyles.underline} />
-                {expandedSections.elder && (
+                {renderAnimatedSection('elder',
                   <View style={roleSelectionStyles.answerContainer}>
                     <Text style={roleSelectionStyles.answerText}>
                       The elder role is designed for elderly users who are the primary users of the app. 
@@ -270,14 +348,23 @@ export default function RoleSelection({ navigation }: Props) {
                   activeOpacity={0.7}
                 >
                   <Text style={roleSelectionStyles.questionText}>What is the caregiver role?</Text>
-                  <Ionicons 
-                    name={expandedSections.caregiver ? "chevron-up" : "chevron-down"} 
-                    size={20} 
-                    color="#6b7280" 
-                  />
+                  <Animated.View style={{
+                    transform: [{
+                      rotate: sectionAnimations.caregiver.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '180deg'],
+                      })
+                    }]
+                  }}>
+                    <Ionicons 
+                      name="chevron-down"
+                      size={20} 
+                      color="#6b7280" 
+                    />
+                  </Animated.View>
                 </TouchableOpacity>
                 <View style={roleSelectionStyles.underline} />
-                {expandedSections.caregiver && (
+                {renderAnimatedSection('caregiver',
                   <View style={roleSelectionStyles.answerContainer}>
                     <Text style={roleSelectionStyles.answerText}>
                       The caregiver role is for family members, healthcare providers, or professional 

@@ -102,11 +102,6 @@ export default function SignUp({ navigation }: Props) {
             </TouchableOpacity>
         </View>
 
-        {/* Forgot Password */}
-        <TouchableOpacity onPress={handleForgotPassword} style={signUpStyles.forgotPasswordContainer}>
-          <Text style={signUpStyles.forgotPasswordText}>Forgot Password?</Text>
-        </TouchableOpacity>
-
         {/* Sign Up Button */}
         <TouchableOpacity
           style={signUpStyles.signUpSubmitButton}

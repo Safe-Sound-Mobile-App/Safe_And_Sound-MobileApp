@@ -193,11 +193,28 @@ export const roleSelectionStyles = StyleSheet.create({
   questionSection: {
     marginBottom: 24,
   },
+  questionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
   questionText: {
     fontSize: 16,
     fontFamily: 'BalooBhaijaan2_400Regular',
     color: '#6b7280',
     marginBottom: 8,
+    letterSpacing: 0.3,
+  },
+  answerContainer: {
+    paddingVertical: 12,
+    paddingLeft: 8,
+  },
+  answerText: {
+    fontSize: 14,
+    fontFamily: 'BalooBhaijaan2_400Regular',
+    color: '#4b5563',
+    lineHeight: 20,
     letterSpacing: 0.3,
   },
   underline: {

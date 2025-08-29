@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, Animated, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, Animated, Modal, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import { roleSelectionStyles } from '../../../global_style/roleSelectionStyles';
 import { Ionicons } from '@expo/vector-icons';
+
+// Import your images
+const elderImage = require('../../../../assets/icons/elder.png');
+const caregiverImage = require('../../../../assets/icons/caregiver.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "RoleSelection">;
 
@@ -45,12 +49,12 @@ export default function RoleSelection({ navigation }: Props) {
     }
   };
 
-  const renderRoleButton = (role: 'elder' | 'caregiver', icon: string, label: string) => {
+  const renderRoleButton = (role: 'elder' | 'caregiver', imageSource: any, label: string) => {
     const isSelected = selectedRole === role;
     const animationValue = role === 'elder' ? elderAnimation : caregiverAnimation;
     
     // Interpolate colors for smooth transition
-    const iconOpacity = animationValue.interpolate({
+    const imageOpacity = animationValue.interpolate({
       inputRange: [0, 1],
       outputRange: [1, 0],
     });
@@ -69,38 +73,50 @@ export default function RoleSelection({ navigation }: Props) {
         onPress={() => handleRoleSelect(role)}
         activeOpacity={0.8}
       >
-        {/* Black icon with animated opacity */}
+        {/* Single image with animated background */}
         <Animated.View style={[
           roleSelectionStyles.iconContainer,
-          { opacity: iconOpacity }
+          {
+            backgroundColor: animationValue.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['transparent', 'transparent'],
+            })
+          }
         ]}>
-          <Ionicons name={icon as any} size={40} color="#000000" />
-        </Animated.View>
-        
-        {/* Gradient icon with animated opacity */}
-        <Animated.View style={[
-          roleSelectionStyles.iconContainer,
-          roleSelectionStyles.gradientIconContainer,
-          { opacity: gradientOpacity }
-        ]}>
-          <MaskedView
-            style={roleSelectionStyles.iconMaskContainer}
-            maskElement={
-              <View style={roleSelectionStyles.iconMask}>
-                <Ionicons name={icon as any} size={40} color="black" />
-              </View>
-            }
+          {/* Background gradient (only visible when selected) */}
+          <Animated.View 
+            style={[
+              {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                borderRadius: 20,
+                opacity: gradientOpacity,
+              }
+            ]}
           >
             <LinearGradient
               colors={['#383848', '#008080', '#1DA3A7', '#20A7B1', '#1C959D', '#178085', '#44B589']}
               locations={[0, 0.38, 0.41, 0.45, 0.48, 0.72, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={roleSelectionStyles.gradientIcon}
-            >
-              <Ionicons name={icon as any} size={40} color="transparent" />
-            </LinearGradient>
-          </MaskedView>
+              style={{ flex: 1, borderRadius: 20 }}
+            />
+          </Animated.View>
+          
+          {/* Image always visible */}
+          <Image 
+            source={imageSource} 
+            style={{ 
+              width: 40, 
+              height: 40,
+              zIndex: 1,
+              tintColor: isSelected ? '#FFFFFF' : '#000000'
+            }}
+            resizeMode="contain"
+          />
         </Animated.View>
         
         <Text style={[
@@ -125,8 +141,8 @@ export default function RoleSelection({ navigation }: Props) {
         
         {/* Role Selection Buttons */}
         <View style={roleSelectionStyles.roleContainer}>
-          {renderRoleButton('elder', 'accessibility-outline', 'Elder')}
-          {renderRoleButton('caregiver', 'medical-outline', 'Caregiver')}
+          {renderRoleButton('elder', elderImage, 'Elder')}
+          {renderRoleButton('caregiver', caregiverImage, 'Caregiver')}
         </View>
         
         {/* Role Description Button */}

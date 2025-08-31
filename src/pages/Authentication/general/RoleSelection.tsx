@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, Animated, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, SafeAreaView, Animated, Modal, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import { roleSelectionStyles } from '../../../global_style/roleSelectionStyles';
 import { Ionicons } from '@expo/vector-icons';
+
+// Import your images
+const elderImage = require('../../../../assets/icons/elder.png');
+const caregiverImage = require('../../../../assets/icons/caregiver.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "RoleSelection">;
 
@@ -14,6 +18,18 @@ export default function RoleSelection({ navigation }: Props) {
   const [elderAnimation] = useState(new Animated.Value(0));
   const [caregiverAnimation] = useState(new Animated.Value(0));
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
+    why: false,
+    elder: false,
+    caregiver: false,
+  });
+
+  // Animation values for accordion sections
+  const [sectionAnimations] = useState({
+    why: new Animated.Value(0),
+    elder: new Animated.Value(0),
+    caregiver: new Animated.Value(0),
+  });
 
   const handleRoleSelect = (role: 'elder' | 'caregiver') => {
     setSelectedRole(role);
@@ -45,12 +61,84 @@ export default function RoleSelection({ navigation }: Props) {
     }
   };
 
-  const renderRoleButton = (role: 'elder' | 'caregiver', icon: string, label: string) => {
+  const toggleSection = (sectionKey: string) => {
+    const currentlyExpanded = expandedSections[sectionKey];
+    
+    // First, collapse all other sections with delay
+    Object.keys(expandedSections).forEach((key) => {
+      if (key !== sectionKey && expandedSections[key]) {
+        Animated.timing(sectionAnimations[key], {
+          toValue: 0,
+          duration: 100,
+          useNativeDriver: false,
+        }).start(() => {
+          // Update state after animation completes
+          setExpandedSections(prev => ({
+            ...prev,
+            [key]: false
+          }));
+        });
+      }
+    });
+    
+    // Then handle the clicked section
+    if (currentlyExpanded) {
+      // If currently expanded, collapse it
+      Animated.timing(sectionAnimations[sectionKey], {
+        toValue: 0,
+        duration: 50,
+        useNativeDriver: false,
+      }).start(() => {
+        setExpandedSections(prev => ({
+          ...prev,
+          [sectionKey]: false
+        }));
+      });
+    } else {
+      // If currently collapsed, expand it after a delay
+      setTimeout(() => {
+        setExpandedSections(prev => ({
+          ...prev,
+          [sectionKey]: true
+        }));
+        
+        Animated.timing(sectionAnimations[sectionKey], {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }).start();
+      }, 150); // Delay before expanding
+    }
+  };
+
+  const renderAnimatedSection = (sectionKey: string, content: React.ReactNode) => {
+    const animatedHeight = sectionAnimations[sectionKey].interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 100], // Adjust this value based on your content height
+    });
+
+    const opacity = sectionAnimations[sectionKey].interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, 0, 1],
+    });
+
+    return (
+      <Animated.View style={{
+        height: animatedHeight,
+        opacity: opacity,
+        overflow: 'hidden',
+      }}>
+        {content}
+      </Animated.View>
+    );
+  };
+
+  const renderRoleButton = (role: 'elder' | 'caregiver', imageSource: any, label: string) => {
     const isSelected = selectedRole === role;
     const animationValue = role === 'elder' ? elderAnimation : caregiverAnimation;
     
     // Interpolate colors for smooth transition
-    const iconOpacity = animationValue.interpolate({
+    const imageOpacity = animationValue.interpolate({
       inputRange: [0, 1],
       outputRange: [1, 0],
     });
@@ -69,25 +157,39 @@ export default function RoleSelection({ navigation }: Props) {
         onPress={() => handleRoleSelect(role)}
         activeOpacity={0.8}
       >
-        {/* Black icon with animated opacity */}
+        {/* Black image with animated opacity */}
         <Animated.View style={[
           roleSelectionStyles.iconContainer,
-          { opacity: iconOpacity }
+          { opacity: imageOpacity }
         ]}>
-          <Ionicons name={icon as any} size={40} color="#000000" />
+          <Image 
+            source={imageSource} 
+            style={{ 
+              width: 40, 
+              height: 40,
+              tintColor: '#000000',
+            }}
+            resizeMode="contain"
+          />
         </Animated.View>
         
-        {/* Gradient icon with animated opacity */}
+        {/* Gradient image with animated opacity */}
         <Animated.View style={[
           roleSelectionStyles.iconContainer,
-          roleSelectionStyles.gradientIconContainer,
           { opacity: gradientOpacity }
         ]}>
           <MaskedView
             style={roleSelectionStyles.iconMaskContainer}
             maskElement={
               <View style={roleSelectionStyles.iconMask}>
-                <Ionicons name={icon as any} size={40} color="black" />
+                <Image 
+                  source={imageSource} 
+                  style={{ 
+                    width: 40, 
+                    height: 40 
+                  }}
+                  resizeMode="contain"
+                />
               </View>
             }
           >
@@ -98,7 +200,7 @@ export default function RoleSelection({ navigation }: Props) {
               end={{ x: 1, y: 0 }}
               style={roleSelectionStyles.gradientIcon}
             >
-              <Ionicons name={icon as any} size={40} color="transparent" />
+              <View style={{ width: 40, height: 40 }} />
             </LinearGradient>
           </MaskedView>
         </Animated.View>
@@ -125,8 +227,8 @@ export default function RoleSelection({ navigation }: Props) {
         
         {/* Role Selection Buttons */}
         <View style={roleSelectionStyles.roleContainer}>
-          {renderRoleButton('elder', 'accessibility-outline', 'Elder')}
-          {renderRoleButton('caregiver', 'medical-outline', 'Caregiver')}
+          {renderRoleButton('elder', elderImage, 'Elder')}
+          {renderRoleButton('caregiver', caregiverImage, 'Caregiver')}
         </View>
         
         {/* Role Description Button */}
@@ -160,43 +262,130 @@ export default function RoleSelection({ navigation }: Props) {
       </View>
 
     {/* Role Description Modal */}
-        <Modal
-          visible={showDescriptionModal}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setShowDescriptionModal(false)}
-        >
-          <View style={roleSelectionStyles.modalOverlay}>
-            <View style={roleSelectionStyles.modalContainer}>
-              <Text style={roleSelectionStyles.modalTitle}>Role Description</Text>
-              
-              <View style={roleSelectionStyles.modalContent}>
-                <View style={roleSelectionStyles.questionSection}>
+      <Modal
+        visible={showDescriptionModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDescriptionModal(false)}
+      >
+        <View style={roleSelectionStyles.modalOverlay}>
+          <View style={roleSelectionStyles.modalContainer}>
+            <Text style={roleSelectionStyles.modalTitle}>Role Description</Text>
+            
+            <View style={roleSelectionStyles.modalContent}>
+              <View style={roleSelectionStyles.questionSection}>
+                <TouchableOpacity 
+                  style={roleSelectionStyles.questionHeader}
+                  onPress={() => toggleSection('why')}
+                  activeOpacity={0.7}
+                >
                   <Text style={roleSelectionStyles.questionText}>Why user need to select role?</Text>
-                  <View style={roleSelectionStyles.underline} />
-                </View>
-                
-                <View style={roleSelectionStyles.questionSection}>
-                  <Text style={roleSelectionStyles.questionText}>What is the elder role?</Text>
-                  <View style={roleSelectionStyles.underline} />
-                </View>
-                
-                <View style={roleSelectionStyles.questionSection}>
-                  <Text style={roleSelectionStyles.questionText}>What is the caregiver role?</Text>
-                  <View style={roleSelectionStyles.underline} />
-                </View>
+                  <Animated.View style={{
+                    transform: [{
+                      rotate: sectionAnimations.why.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '180deg'],
+                      })
+                    }]
+                  }}>
+                    <Ionicons 
+                      name="chevron-down"
+                      size={20} 
+                      color="#6b7280" 
+                    />
+                  </Animated.View>
+                </TouchableOpacity>
+                <View style={roleSelectionStyles.underline} />
+                {renderAnimatedSection('why',
+                  <View style={roleSelectionStyles.answerContainer}>
+                    <Text style={roleSelectionStyles.answerText}>
+                      Role selection helps customize the app experience based on your specific needs. 
+                      Each role provides tailored features, interface elements, and functionalities 
+                      to better serve either elderly users or their caregivers.
+                    </Text>
+                  </View>
+                )}
               </View>
               
-              <TouchableOpacity
-                style={roleSelectionStyles.modalCloseButton}
-                onPress={() => setShowDescriptionModal(false)}
-                activeOpacity={0.8}
-              >
-                <Text style={roleSelectionStyles.modalCloseButtonText}>Close</Text>
-              </TouchableOpacity>
+              <View style={roleSelectionStyles.questionSection}>
+                <TouchableOpacity 
+                  style={roleSelectionStyles.questionHeader}
+                  onPress={() => toggleSection('elder')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={roleSelectionStyles.questionText}>What is the elder role?</Text>
+                  <Animated.View style={{
+                    transform: [{
+                      rotate: sectionAnimations.elder.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '180deg'],
+                      })
+                    }]
+                  }}>
+                    <Ionicons 
+                      name="chevron-down"
+                      size={20} 
+                      color="#6b7280" 
+                    />
+                  </Animated.View>
+                </TouchableOpacity>
+                <View style={roleSelectionStyles.underline} />
+                {renderAnimatedSection('elder',
+                  <View style={roleSelectionStyles.answerContainer}>
+                    <Text style={roleSelectionStyles.answerText}>
+                      The elder role is designed for elderly users who are the primary users of the app. 
+                      This role provides larger text, simplified navigation, emergency features, 
+                      health monitoring tools, and direct access to assistance services.
+                    </Text>
+                  </View>
+                )}
+              </View>
+              
+              <View style={roleSelectionStyles.questionSection}>
+                <TouchableOpacity 
+                  style={roleSelectionStyles.questionHeader}
+                  onPress={() => toggleSection('caregiver')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={roleSelectionStyles.questionText}>What is the caregiver role?</Text>
+                  <Animated.View style={{
+                    transform: [{
+                      rotate: sectionAnimations.caregiver.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '180deg'],
+                      })
+                    }]
+                  }}>
+                    <Ionicons 
+                      name="chevron-down"
+                      size={20} 
+                      color="#6b7280" 
+                    />
+                  </Animated.View>
+                </TouchableOpacity>
+                <View style={roleSelectionStyles.underline} />
+                {renderAnimatedSection('caregiver',
+                  <View style={roleSelectionStyles.answerContainer}>
+                    <Text style={roleSelectionStyles.answerText}>
+                      The caregiver role is for family members, healthcare providers, or professional 
+                      caregivers who assist elderly individuals. This role includes monitoring dashboards, 
+                      alert management, care coordination tools, and communication features.
+                    </Text>
+                  </View>
+                )}
+              </View>
             </View>
+            
+            <TouchableOpacity
+              style={roleSelectionStyles.modalCloseButton}
+              onPress={() => setShowDescriptionModal(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={roleSelectionStyles.modalCloseButtonText}>Close</Text>
+            </TouchableOpacity>
           </View>
-        </Modal>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

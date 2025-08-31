@@ -17,7 +17,7 @@ export const signUpStyles = StyleSheet.create({
     color: '#374151',
     textAlign: 'center',
     letterSpacing: 0.5,
-    marginBottom: 30, // เพิ่ม spacing ระหว่าง title และ button
+    marginBottom: 40, // เพิ่ม spacing ระหว่าง title และ button
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -78,6 +78,7 @@ export const signUpStyles = StyleSheet.create({
   signUpSubmitButton: {
     width: width * 0.35, // ใช้ 60% ของหน้าจอ
     maxWidth: 150,
+    marginTop: 50,
     paddingVertical: 10,
     paddingHorizontal: 32,
     backgroundColor: '#000000',

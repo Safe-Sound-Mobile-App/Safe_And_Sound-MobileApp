@@ -17,7 +17,7 @@ export const signInStyles = StyleSheet.create({
     color: '#374151',
     textAlign: 'center',
     letterSpacing: 0.5,
-    marginBottom: 30, // เพิ่ม spacing ระหว่าง title และ button
+    marginBottom: 40, // เพิ่ม spacing ระหว่าง title และ button
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

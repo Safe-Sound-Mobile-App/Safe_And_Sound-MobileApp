@@ -37,7 +37,7 @@ export const styles = StyleSheet.create({
         justifyContent: "center",
     },
     checkboxChecked: { backgroundColor: "#111827", borderColor: "#111827" },
-    consentText: { flexShrink: 1, marginHorizontal: 6, color: "#374151", textAlign: "center"},
+    consentText: { flexShrink: 1, marginHorizontal: 1, color: "#374151", textAlign: "center" },
     consentLink: { color: "#008080", fontWeight: "600" },
     requiredStar: { color: "#ef4444", marginLeft: 4 },
     errorText: { color: "#ef4444", fontSize: 12, marginTop: 4 },

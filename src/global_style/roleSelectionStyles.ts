@@ -44,7 +44,7 @@ export const roleSelectionStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 30,
-    paddingHorizontal: 20,
+    paddingHorizontal: 0,
     width: '100%',
     maxWidth: 320,
   },

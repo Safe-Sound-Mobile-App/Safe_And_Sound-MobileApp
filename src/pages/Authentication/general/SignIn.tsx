@@ -8,7 +8,7 @@ import type { RootStackParamList } from "../../../App";
 const googleIcon = require('../../../../assets/icons/google.png');
 const usernameIcon = require('../../../../assets/icons/username.png');
 const passwordIcon = require('../../../../assets/icons/password.png');
-const eyeIcon = require('../../../../assets/icons/eye.png');
+const eyeIcon = require('../../../../assets/icons/invisible.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 
@@ -46,7 +46,11 @@ export default function SignIn({ navigation }: Props) {
         
         {/* Username Input */}
         <View style={signInStyles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color="#6b7280" style={signInStyles.inputIcon} />
+            <Image 
+              source={usernameIcon} 
+              style={signInStyles.inputIcon}
+              resizeMode="contain"
+            />
           <TextInput
             style={signInStyles.textInput}
             placeholder="Username"
@@ -59,7 +63,11 @@ export default function SignIn({ navigation }: Props) {
 
         {/* Password Input */}
         <View style={signInStyles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={signInStyles.inputIcon} />
+            <Image 
+              source={passwordIcon} 
+              style={signInStyles.inputIcon}
+              resizeMode="contain"
+            />
           <TextInput
             style={signInStyles.textInput}
             placeholder="Password"

@@ -6,6 +6,9 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 
 const googleIcon = require('../../../../assets/icons/google.png');
+const usernameIcon = require('../../../../assets/icons/username.png');
+const passwordIcon = require('../../../../assets/icons/password.png');
+const eyeIcon = require('../../../../assets/icons/invisible.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignUp">;
 
@@ -45,7 +48,11 @@ export default function SignUp({ navigation }: Props) {
         
         {/* Username Input */}
         <View style={signUpStyles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color="#6b7280" style={signUpStyles.inputIcon} />
+            <Image 
+              source={usernameIcon} 
+              style={signUpStyles.inputIcon}
+              resizeMode="contain"
+            />
           <TextInput
             style={signUpStyles.textInput}
             placeholder="Username"
@@ -58,7 +65,11 @@ export default function SignUp({ navigation }: Props) {
 
         {/* Password Input */}
         <View style={signUpStyles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={signUpStyles.inputIcon} />
+            <Image 
+              source={passwordIcon} 
+              style={signUpStyles.inputIcon}
+              resizeMode="contain"
+            />
           <TextInput
             style={signUpStyles.textInput}
             placeholder="Password"
@@ -82,7 +93,11 @@ export default function SignUp({ navigation }: Props) {
 
         {/* Confirm Password Input */}
         <View style={signUpStyles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={signUpStyles.inputIcon} />
+            <Image 
+              source={passwordIcon} 
+              style={signUpStyles.inputIcon}
+              resizeMode="contain"
+            />
             <TextInput
             style={signUpStyles.textInput}
             placeholder="Confirm Password"

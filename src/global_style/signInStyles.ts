@@ -51,6 +51,7 @@ export const signInStyles = StyleSheet.create({
   inputIcon: {
     marginRight: 12,
     color: '#9ca3af',
+    opacity: 0.7,
   },
   textInput: {
     flex: 1,

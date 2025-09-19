@@ -114,7 +114,7 @@ export default function RoleSelection({ navigation }: Props) {
   const renderAnimatedSection = (sectionKey: string, content: React.ReactNode) => {
     const animatedHeight = sectionAnimations[sectionKey].interpolate({
       inputRange: [0, 1],
-      outputRange: [0, 100], // Adjust this value based on your content height
+      outputRange: [0, 140], // Adjust this value based on your content height
     });
 
     const opacity = sectionAnimations[sectionKey].interpolate({

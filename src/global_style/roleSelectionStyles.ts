@@ -187,7 +187,7 @@ export const roleSelectionStyles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   modalContent: {
-    marginBottom: 32,
+    marginBottom: 2,
   },
   questionSection: {
     marginBottom: 24,

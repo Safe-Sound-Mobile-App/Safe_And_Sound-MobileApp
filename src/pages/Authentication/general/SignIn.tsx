@@ -6,6 +6,9 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 
 const googleIcon = require('../../../../assets/icons/google.png');
+const usernameIcon = require('../../../../assets/icons/username.png');
+const passwordIcon = require('../../../../assets/icons/password.png');
+const eyeIcon = require('../../../../assets/icons/eye.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 

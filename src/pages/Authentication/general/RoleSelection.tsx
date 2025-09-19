@@ -41,14 +41,14 @@ export default function RoleSelection({ navigation }: Props) {
     // Animate to gradient
     Animated.timing(selectedAnimation, {
       toValue: 1,
-      duration: 300,
+      duration: 400,
       useNativeDriver: false,
     }).start();
     
     // Animate other back to black
     Animated.timing(otherAnimation, {
       toValue: 0,
-      duration: 300,
+      duration: 400,
       useNativeDriver: false,
     }).start();
   };
@@ -137,17 +137,6 @@ export default function RoleSelection({ navigation }: Props) {
     const isSelected = selectedRole === role;
     const animationValue = role === 'elder' ? elderAnimation : caregiverAnimation;
     
-    // Interpolate colors for smooth transition
-    const imageOpacity = animationValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [1, 0],
-    });
-    
-    const gradientOpacity = animationValue.interpolate({
-      inputRange: [0, 1],
-      outputRange: [0, 1],
-    });
-    
     return (
       <TouchableOpacity
         style={[
@@ -157,53 +146,48 @@ export default function RoleSelection({ navigation }: Props) {
         onPress={() => handleRoleSelect(role)}
         activeOpacity={0.8}
       >
-        {/* Black image with animated opacity */}
-        <Animated.View style={[
-          roleSelectionStyles.iconContainer,
-          { opacity: imageOpacity }
-        ]}>
-          <Image 
-            source={imageSource} 
-            style={{ 
-              width: 40, 
-              height: 40,
-              tintColor: '#000000',
-            }}
-            resizeMode="contain"
-          />
-        </Animated.View>
-        
-        {/* Gradient image with animated opacity */}
-        <Animated.View style={[
-          roleSelectionStyles.iconContainer,
-          { opacity: gradientOpacity }
-        ]}>
-          <MaskedView
-            style={roleSelectionStyles.iconMaskContainer}
-            maskElement={
-              <View style={roleSelectionStyles.iconMask}>
-                <Image 
-                  source={imageSource} 
-                  style={{ 
-                    width: 40, 
-                    height: 40 
-                  }}
-                  resizeMode="contain"
-                />
-              </View>
-            }
-          >
-            <LinearGradient
-              colors={['#383848', '#008080', '#1DA3A7', '#20A7B1', '#1C959D', '#178085', '#44B589']}
-              locations={[0, 0.38, 0.41, 0.45, 0.48, 0.72, 1]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={roleSelectionStyles.gradientIcon}
+        {/* Icon Container */}
+        <View style={roleSelectionStyles.iconWrapper}>
+          {!isSelected ? (
+            // Show black icon when not selected
+            <Image 
+              source={imageSource} 
+              style={{ 
+                width: 40, 
+                height: 40,
+                tintColor: '#000000',
+              }}
+              resizeMode="contain"
+            />
+          ) : (
+            // Show gradient icon when selected
+            <MaskedView
+              style={roleSelectionStyles.iconMaskContainer}
+              maskElement={
+                <View style={roleSelectionStyles.iconMask}>
+                  <Image 
+                    source={imageSource} 
+                    style={{ 
+                      width: 40, 
+                      height: 40 
+                    }}
+                    resizeMode="contain"
+                  />
+                </View>
+              }
             >
-              <View style={{ width: 40, height: 40 }} />
-            </LinearGradient>
-          </MaskedView>
-        </Animated.View>
+              <LinearGradient
+                colors={['#383848', '#008080', '#1DA3A7', '#20A7B1', '#1C959D', '#178085', '#44B589']}
+                locations={[0, 0.38, 0.41, 0.45, 0.48, 0.72, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={roleSelectionStyles.gradientIcon}
+              >
+                <View style={{ width: 40, height: 40 }} />
+              </LinearGradient>
+            </MaskedView>
+          )}
+        </View>
         
         <Text style={[
           roleSelectionStyles.roleLabel,

@@ -139,35 +139,53 @@ export const signInStyles = StyleSheet.create({
     paddingHorizontal: 15,
     fontFamily: 'BalooBhaijaan2_400Regular',
   },
-  googleSignInButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 30,
-    backgroundColor: '#6b7280',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 0,
-    shadowColor: 'transparent',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
-  },
-  googleIconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   googleIcon: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: 'bold',
     fontFamily: 'BalooBhaijaan2_600SemiBold',
   },
+  googleSignInButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#dadce0',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  googleIconContainer: {
+    width: 20,
+    height: 20,
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleG: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#4285f4',
+    fontFamily: 'Product Sans', // Google's font, fallback to system font
+  },
+  googleIconImage: {
+    width: 18,
+    height: 18,
+  },
+  googleButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#3c4043',
+    fontFamily: 'Roboto', // Google's font, fallback to system font
+  }
 });

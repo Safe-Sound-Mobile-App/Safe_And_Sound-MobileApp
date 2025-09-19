@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { signUpStyles } from '../../../global_style/signUpStyles';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
+
+const googleIcon = require('../../../../assets/icons/google.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignUp">;
 
@@ -126,15 +128,20 @@ export default function SignUp({ navigation }: Props) {
           <View style={signUpStyles.dividerLine} />
         </View>
 
-        {/* Google Sign In Button */}
+        {/* Google Sign In Button - New Design */}
         <TouchableOpacity
           style={signUpStyles.googleSignInButton}
           onPress={handleGoogleSignIn}
           activeOpacity={0.8}
         >
           <View style={signUpStyles.googleIconContainer}>
-            <Text style={signUpStyles.googleIcon}>G</Text>
+            <Image 
+              source={googleIcon} 
+              style={signUpStyles.googleIconImage}
+              resizeMode="contain"
+            />
           </View>
+          <Text style={signUpStyles.googleButtonText}>Sign up with Google</Text>
         </TouchableOpacity>
 
       </View>

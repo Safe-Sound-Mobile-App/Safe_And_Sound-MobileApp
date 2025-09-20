@@ -90,7 +90,7 @@ export default function SignIn({ navigation }: Props) {
         </View>
 
         {/* Forgot Password */}
-        <TouchableOpacity onPress={handleForgotPassword} style={signInStyles.forgotPasswordContainer}>
+        <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")} style={signInStyles.forgotPasswordContainer}>
           <Text style={signInStyles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
 

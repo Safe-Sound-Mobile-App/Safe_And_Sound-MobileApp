@@ -4,6 +4,6 @@
   "include": [
     "nativewind.d.ts",
     "App.tsx",
-    "src/**/*"
+    "src/**/*",
   ]
 }

@@ -45,7 +45,7 @@ export default function Home({ navigation }: Props) {
               </Text>
             </LinearGradient>
           </MaskedView>
-          
+
           {/* Sign In button */}
           <TouchableOpacity
             style={styles.signInButton}
@@ -54,6 +54,33 @@ export default function Home({ navigation }: Props) {
           >
             <Text style={styles.signInButtonText}>SIGN IN</Text>
           </TouchableOpacity>
+
+          <View style={{ paddingTop: 16 }}>
+            <TouchableOpacity
+                style={[
+                  styles.signInButton,
+                  { backgroundColor: '#008080', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10 }
+                ]}
+                onPress={() => navigation.navigate('ElderInfoForm')}
+                activeOpacity={0.8}
+            >
+              <Text style={{ color: 'white', textAlign: 'center', fontWeight: '700' }}>Elder Form Page</Text>
+            </TouchableOpacity>
+          </View>
+
+            <View style={{ paddingTop: 16 }}>
+                <TouchableOpacity
+                    style={[
+                        styles.signInButton,
+                        { backgroundColor: '#008080', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10 }
+                    ]}
+                    onPress={() => navigation.navigate('CaregiverInfoForm')}
+                    activeOpacity={0.8}
+                >
+                    <Text style={{ color: 'white', textAlign: 'center', fontWeight: '700' }}>Caregiver Form Page</Text>
+                </TouchableOpacity>
+            </View>
+
         </View>
       </View>
     </SafeAreaView>

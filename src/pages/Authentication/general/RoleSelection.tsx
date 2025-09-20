@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 // Import your images
 const elderImage = require('../../../../assets/icons/elder.png');
 const caregiverImage = require('../../../../assets/icons/caregiver.png');
+const helpIcon = require('../../../../assets/icons/help.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "RoleSelection">;
 
@@ -221,7 +222,11 @@ export default function RoleSelection({ navigation }: Props) {
             onPress={() => setShowDescriptionModal(true)}
             activeOpacity={0.8}
         >
-          <Ionicons name="help-circle-outline" size={16} color="#6b7280" />
+            <Image 
+              source={helpIcon} 
+              style={{ width: 20, height: 20, tintColor: '#6b7280' }}
+              resizeMode="contain"
+            />
           <Text style={roleSelectionStyles.descriptionText}>Role Description</Text>
         </TouchableOpacity>
         

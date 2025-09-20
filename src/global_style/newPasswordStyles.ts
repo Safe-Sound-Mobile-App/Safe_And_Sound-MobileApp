@@ -2,7 +2,7 @@ import { StyleSheet, Dimensions } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
-export const forgotPasswordStyles = StyleSheet.create({
+export const newPasswordStyles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
@@ -39,7 +39,7 @@ export const forgotPasswordStyles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
     paddingHorizontal: 20,
     lineHeight: 20,
     fontFamily: 'BalooBhaijaan2_400Regular',
@@ -49,7 +49,7 @@ export const forgotPasswordStyles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     maxWidth: 300,
-    marginBottom: 40,
+    marginBottom: 15,
     backgroundColor: 'transparent',
     borderRadius: 0,
     paddingHorizontal: 0,
@@ -77,7 +77,24 @@ export const forgotPasswordStyles = StyleSheet.create({
     fontFamily: 'BalooBhaijaan2_400Regular',
     paddingVertical: 0,
   },
-  sendButton: {
+  eyeIcon: {
+    padding: 5,
+  },
+  requirementsContainer: {
+    width: '100%',
+    maxWidth: 300,
+    marginBottom: 40,
+    paddingHorizontal: 10,
+  },
+  requirementsText: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 16,
+    fontFamily: 'BalooBhaijaan2_400Regular',
+    fontStyle: 'italic',
+  },
+  resetButton: {
     width: width * 0.6,
     maxWidth: 200,
     paddingVertical: 12,
@@ -96,33 +113,15 @@ export const forgotPasswordStyles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  sendButtonDisabled: {
+  resetButtonDisabled: {
     backgroundColor: '#9ca3af',
   },
-  sendButtonText: {
+  resetButtonText: {
     color: '#ffffff',
     fontSize: 14,
     fontWeight: '900',
     fontFamily: 'BalooBhaijaan2_600SemiBold',
     letterSpacing: 1,
     textAlign: 'center',
-  },
-  signInContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  signInText: {
-    color: '#9ca3af',
-    fontSize: 14,
-    fontWeight: '200',
-    fontFamily: 'BalooBhaijaan2_400Regular',
-  },
-  signInLink: {
-    color: '#008080',
-    fontSize: 14,
-    fontWeight: '900',
-    fontFamily: 'BalooBhaijaan2_600SemiBold',
-    letterSpacing: 0.5,
   },
 });

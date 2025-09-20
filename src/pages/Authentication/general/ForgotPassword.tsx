@@ -109,7 +109,15 @@ export default function ForgotPassword({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-      </View>
+        {/* Mock Up New Password */}
+        <View style={forgotPasswordStyles.signInContainer}>
+          <Text style={forgotPasswordStyles.signInText}>Mockup New Password page </Text>
+          <TouchableOpacity onPress={() => navigation.navigate("NewPassword")}>
+            <Text style={forgotPasswordStyles.signInLink}>New Password</Text>
+          </TouchableOpacity>
+        </View>
+
+        </View>
     </SafeAreaView>
   );
 }

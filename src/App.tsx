@@ -6,6 +6,7 @@ import SignIn from "./pages/Authentication/general/SignIn";
 import SignUp from "./pages/Authentication/general/SignUp";
 import RoleSelection from "./pages/Authentication/general/RoleSelection";
 import ForgotPassword from "./pages/Authentication/general/ForgotPassword";
+import NewPassword from "./pages/Authentication/general/NewPassword";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -13,6 +14,7 @@ export type RootStackParamList = {
   SignUp: undefined;
   RoleSelection: undefined;
   ForgotPassword: undefined;
+  NewPassword: { token: string};
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -26,6 +28,7 @@ const linking = {
             SignUp: "SignUp",
             RoleSelection: "RoleSelection", // This maps to "/edit/:id"
             ForgotPassword: "ForgotPassword",
+            NewPassword: "NewPassword", // This maps to "/edit/:id"
         },
     },
 };
@@ -45,6 +48,7 @@ export default function App() {
           <Stack.Screen name="SignUp" component={SignUp} />
           <Stack.Screen name="RoleSelection" component={RoleSelection} />
           <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+          <Stack.Screen name="NewPassword" component={NewPassword} />
         </Stack.Navigator>
       </NavigationContainer>
   );

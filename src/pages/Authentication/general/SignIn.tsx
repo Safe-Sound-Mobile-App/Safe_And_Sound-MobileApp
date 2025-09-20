@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { signInStyles } from '../../../global_style/signInStyles';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
+
+const googleIcon = require('../../../../assets/icons/google.png');
+const usernameIcon = require('../../../../assets/icons/username.png');
+const passwordIcon = require('../../../../assets/icons/password.png');
+const eyeIcon = require('../../../../assets/icons/invisible.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 
@@ -41,7 +46,11 @@ export default function SignIn({ navigation }: Props) {
         
         {/* Username Input */}
         <View style={signInStyles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color="#6b7280" style={signInStyles.inputIcon} />
+            <Image 
+              source={usernameIcon} 
+              style={signInStyles.inputIcon}
+              resizeMode="contain"
+            />
           <TextInput
             style={signInStyles.textInput}
             placeholder="Username"
@@ -54,7 +63,11 @@ export default function SignIn({ navigation }: Props) {
 
         {/* Password Input */}
         <View style={signInStyles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={signInStyles.inputIcon} />
+            <Image 
+              source={passwordIcon} 
+              style={signInStyles.inputIcon}
+              resizeMode="contain"
+            />
           <TextInput
             style={signInStyles.textInput}
             placeholder="Password"
@@ -77,7 +90,7 @@ export default function SignIn({ navigation }: Props) {
         </View>
 
         {/* Forgot Password */}
-        <TouchableOpacity onPress={handleForgotPassword} style={signInStyles.forgotPasswordContainer}>
+        <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")} style={signInStyles.forgotPasswordContainer}>
           <Text style={signInStyles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
 
@@ -105,15 +118,20 @@ export default function SignIn({ navigation }: Props) {
           <View style={signInStyles.dividerLine} />
         </View>
 
-        {/* Google Sign In Button */}
+        {/* Google Sign In Button - New Design */}
         <TouchableOpacity
           style={signInStyles.googleSignInButton}
           onPress={handleGoogleSignIn}
           activeOpacity={0.8}
         >
           <View style={signInStyles.googleIconContainer}>
-            <Text style={signInStyles.googleIcon}>G</Text>
+            <Image 
+              source={googleIcon} 
+              style={signInStyles.googleIconImage}
+              resizeMode="contain"
+            />
           </View>
+          <Text style={signInStyles.googleButtonText}>Sign in with Google</Text>
         </TouchableOpacity>
 
       </View>

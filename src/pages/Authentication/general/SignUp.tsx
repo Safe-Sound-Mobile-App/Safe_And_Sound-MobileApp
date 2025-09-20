@@ -1,9 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { signUpStyles } from '../../../global_style/signUpStyles';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
+
+const googleIcon = require('../../../../assets/icons/google.png');
+const usernameIcon = require('../../../../assets/icons/username.png');
+const passwordIcon = require('../../../../assets/icons/password.png');
+const eyeIcon = require('../../../../assets/icons/invisible.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignUp">;
 
@@ -43,7 +48,11 @@ export default function SignUp({ navigation }: Props) {
         
         {/* Username Input */}
         <View style={signUpStyles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color="#6b7280" style={signUpStyles.inputIcon} />
+            <Image 
+              source={usernameIcon} 
+              style={signUpStyles.inputIcon}
+              resizeMode="contain"
+            />
           <TextInput
             style={signUpStyles.textInput}
             placeholder="Username"
@@ -56,7 +65,11 @@ export default function SignUp({ navigation }: Props) {
 
         {/* Password Input */}
         <View style={signUpStyles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={signUpStyles.inputIcon} />
+            <Image 
+              source={passwordIcon} 
+              style={signUpStyles.inputIcon}
+              resizeMode="contain"
+            />
           <TextInput
             style={signUpStyles.textInput}
             placeholder="Password"
@@ -80,7 +93,11 @@ export default function SignUp({ navigation }: Props) {
 
         {/* Confirm Password Input */}
         <View style={signUpStyles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#6b7280" style={signUpStyles.inputIcon} />
+            <Image 
+              source={passwordIcon} 
+              style={signUpStyles.inputIcon}
+              resizeMode="contain"
+            />
             <TextInput
             style={signUpStyles.textInput}
             placeholder="Confirm Password"
@@ -126,15 +143,20 @@ export default function SignUp({ navigation }: Props) {
           <View style={signUpStyles.dividerLine} />
         </View>
 
-        {/* Google Sign In Button */}
+        {/* Google Sign In Button - New Design */}
         <TouchableOpacity
           style={signUpStyles.googleSignInButton}
           onPress={handleGoogleSignIn}
           activeOpacity={0.8}
         >
           <View style={signUpStyles.googleIconContainer}>
-            <Text style={signUpStyles.googleIcon}>G</Text>
+            <Image 
+              source={googleIcon} 
+              style={signUpStyles.googleIconImage}
+              resizeMode="contain"
+            />
           </View>
+          <Text style={signUpStyles.googleButtonText}>Sign up with Google</Text>
         </TouchableOpacity>
 
       </View>

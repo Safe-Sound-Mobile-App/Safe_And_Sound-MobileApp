@@ -72,13 +72,13 @@ export const roleSelectionStyles = StyleSheet.create({
     borderWidth: 3,
     backgroundColor: '#f0fdff',
   },
-  iconContainer: {
-    position: 'absolute',
+  // Icon wrapper for proper positioning
+  iconWrapper: {
     width: 40,
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 12,
   },
   iconMaskContainer: {
     width: 40,
@@ -101,7 +101,6 @@ export const roleSelectionStyles = StyleSheet.create({
     fontFamily: 'BalooBhaijaan2_400Regular',
     color: '#374151',
     textAlign: 'center',
-    marginTop: 65,
     letterSpacing: 0.3,
   },
   selectedRoleLabel: {
@@ -188,7 +187,7 @@ export const roleSelectionStyles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   modalContent: {
-    marginBottom: 32,
+    marginBottom: 2,
   },
   questionSection: {
     marginBottom: 24,

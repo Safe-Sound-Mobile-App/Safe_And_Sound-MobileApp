@@ -5,6 +5,8 @@ import { caregiverHomeStyles, createCaregiverHomeStyles } from '../../../global_
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 
+const chatIcon = require('../../../../assets/icons/chat.png');
+
 // Mock Elder Data Interface
 interface ElderData {
   id: string;
@@ -160,7 +162,11 @@ export default function CaregiverHomepage({ navigation }: Props) {
             style={caregiverHomeStyles.chatButton}
             onPress={() => handleChatWithElder(elder.id, elder.name)}
           >
-            <Ionicons name="chatbubble-outline" size={20} color="#374151" />
+            <Image 
+              source={chatIcon} 
+              style={{ width: 30, height: 30, tintColor: '#374151' }}
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
 

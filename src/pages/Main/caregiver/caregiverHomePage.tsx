@@ -1,11 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, Image, ScrollView } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  SafeAreaView, 
+  Image, 
+  ScrollView,
+  Animated,
+  LayoutAnimation,
+  UIManager,
+  Platform
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { caregiverHomeStyles, createCaregiverHomeStyles } from '../../../global_style/caregiverUseSection/caregiverHomeStyles';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 
 const chatIcon = require('../../../../assets/icons/chat.png');
+
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // Mock Elder Data Interface
 interface ElderData {
@@ -54,6 +70,34 @@ type Props = NativeStackScreenProps<RootStackParamList, "CaregiverHomepage">;
 export default function CaregiverHomepage({ navigation }: Props) {
   const [elderData, setElderData] = useState<ElderData[]>(mockElderData);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  
+  // Animation values for each card
+  const animationRefs = useRef<{[key: string]: Animated.Value}>({});
+  
+  // Initialize animation values
+  useEffect(() => {
+    elderData.forEach(elder => {
+      if (!animationRefs.current[elder.id]) {
+        // เริ่มต้นด้วยค่า 0 (หุบ)
+        animationRefs.current[elder.id] = new Animated.Value(0);
+      }
+    });
+  }, [elderData]);
+
+  // Custom LayoutAnimation configuration
+  const EXPAND_DURATION = 200; // เวลาขยาย (milliseconds)
+  const COLLAPSE_DURATION = 200; // เวลาหุบ (ช้ากว่า)
+  
+  const getLayoutAnimation = (isExpanding: boolean) => ({
+    duration: isExpanding ? EXPAND_DURATION : COLLAPSE_DURATION,
+    create: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+      property: LayoutAnimation.Properties.opacity,
+    },
+    update: {
+      type: LayoutAnimation.Types.easeInEaseOut,
+    },
+  });
 
   // Function to get risk color
   const getRiskColor = (risk: string) => {
@@ -85,15 +129,28 @@ export default function CaregiverHomepage({ navigation }: Props) {
     }
   };
 
-  // Toggle card expansion
+  // Toggle card expansion with animation
   const toggleCardExpansion = (elderId: string) => {
     const newExpanded = new Set(expandedCards);
+    const isExpanding = !newExpanded.has(elderId);
+    
     if (newExpanded.has(elderId)) {
       newExpanded.delete(elderId);
     } else {
       newExpanded.add(elderId);
     }
+    
     setExpandedCards(newExpanded);
+
+    // Animate the expansion/collapse
+    const animValue = animationRefs.current[elderId];
+    if (animValue) {
+      Animated.timing(animValue, {
+        toValue: isExpanding ? 1 : 0,
+        duration: isExpanding ? EXPAND_DURATION : COLLAPSE_DURATION,
+        useNativeDriver: false,
+      }).start();
+    }
   };
 
   // Handle add new elder
@@ -116,12 +173,26 @@ export default function CaregiverHomepage({ navigation }: Props) {
     // navigation.navigate('ElderInfo', { elderId });
   };
 
-  // Render elder card
+  // Render elder card with animation
   const renderElderCard = (elder: ElderData, index: number) => {
     const isExpanded = expandedCards.has(elder.id);
     const riskColor = getRiskColor(elder.risk);
     const cardBackgroundColor = getCardBackgroundColor(elder.risk);
     const riskIcon = getRiskIcon(elder.risk);
+    
+    // Get animation value for this card
+    const animValue = animationRefs.current[elder.id] || new Animated.Value(0);
+    
+    // Calculate animated height and opacity
+    const expandedHeight = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 120], // Adjust based on your content height
+    });
+    
+    const opacity = animValue.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
 
     return (
       <TouchableOpacity
@@ -170,8 +241,16 @@ export default function CaregiverHomepage({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* Expanded Body Section */}
-        {isExpanded && (
+        {/* Animated Expanded Body Section */}
+        <Animated.View
+          style={[
+            {
+              height: expandedHeight,
+              opacity: opacity,
+              overflow: 'hidden',
+            }
+          ]}
+        >
           <View style={caregiverHomeStyles.cardBody}>
             <View style={caregiverHomeStyles.vitalSignsContainer}>
               <View style={caregiverHomeStyles.vitalRow}>
@@ -224,7 +303,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
               <Ionicons name="chevron-forward" size={20} color="#374151" />
             </TouchableOpacity>
           </View>
-        )}
+        </Animated.View>
       </TouchableOpacity>
     );
   };

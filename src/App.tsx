@@ -10,6 +10,8 @@ import NewPassword from "./pages/Authentication/general/NewPassword";
 import ElderInfoForm from "./pages/Authentication/elder/ElderInfoForm";
 import CaregiverInfoForm from "./pages/Authentication/caregiver/CaregiverInfoForm";
 
+import CaregiverHomepage from "./pages/Main/caregiver/caregiverHomePage";
+
 export type RootStackParamList = {
   Home: undefined;
   SignIn: undefined;
@@ -19,6 +21,7 @@ export type RootStackParamList = {
   NewPassword: { token: string};
   ElderInfoForm: undefined;
   CaregiverInfoForm: undefined;
+  CaregiverHomepage: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -35,6 +38,7 @@ const linking = {
             NewPassword: "NewPassword", // This maps to "/edit/:id"
             ElderInfoForm: "ElderInfoForm",
             CaregiverInfoForm: "CaregiverInfoForm",
+            CaregiverHomepage: "CaregiverHomepage",
         },
     },
 };
@@ -57,6 +61,7 @@ export default function App() {
           <Stack.Screen name="NewPassword" component={NewPassword} />
           <Stack.Screen name="ElderInfoForm" component={ElderInfoForm} />
           <Stack.Screen name="CaregiverInfoForm" component={CaregiverInfoForm} />
+          <Stack.Screen name="CaregiverHomepage" component={CaregiverHomepage} />
         </Stack.Navigator>
       </NavigationContainer>
   );

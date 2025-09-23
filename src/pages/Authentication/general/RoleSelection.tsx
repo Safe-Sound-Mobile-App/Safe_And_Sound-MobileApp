@@ -58,6 +58,9 @@ export default function RoleSelection({ navigation }: Props) {
     if (selectedRole) {
       // Navigate to next screen based on selected role
       console.log('Selected role:', selectedRole);
+      if (selectedRole === 'elder') {
+        navigation.navigate("ElderInfoForm");
+      } else (navigation.navigate("CaregiverInfoForm"));
       // navigation.navigate("NextScreen", { role: selectedRole });
     }
   };

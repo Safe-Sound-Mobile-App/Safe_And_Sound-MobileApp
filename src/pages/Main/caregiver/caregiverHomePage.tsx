@@ -47,7 +47,7 @@ const mockElderData: ElderData[] = [
   },
 ];
 
-type Props = NativeStackScreenProps<RootStackParamList, "CaregiverHome">;
+type Props = NativeStackScreenProps<RootStackParamList, "CaregiverHomepage">;
 
 export default function CaregiverHomepage({ navigation }: Props) {
   const [elderData, setElderData] = useState<ElderData[]>(mockElderData);

@@ -17,6 +17,9 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 
 const chatIcon = require('../../../../assets/icons/chat.png');
+const diamondIcon = require('../../../../assets/icons/alert/diamond-exclamation.png');
+const hexagonIcon = require('../../../../assets/icons/alert/hexagon-exclamation.png');
+const triangleIcon = require('../../../../assets/icons/alert/triangle-exclamation.png');
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -122,8 +125,8 @@ export default function CaregiverHomepage({ navigation }: Props) {
   // Function to get risk icon
   const getRiskIcon = (risk: string) => {
     switch (risk) {
-      case 'Danger': return 'warning';
-      case 'Warning': return 'alert-circle';
+      case 'Danger': return triangleIcon;
+      case 'Warning': return diamondIcon;
       case 'Normal': return null;
       default: return null;
     }
@@ -216,11 +219,10 @@ export default function CaregiverHomepage({ navigation }: Props) {
             <View style={caregiverHomeStyles.elderNameRow}>
               <Text style={caregiverHomeStyles.elderName}>{elder.name}</Text>
               {riskIcon && (
-                <Ionicons 
-                  name={riskIcon as any} 
-                  size={16} 
-                  color={riskColor} 
-                  style={caregiverHomeStyles.riskIcon}
+                <Image 
+                    source={riskIcon}
+                    style={{ width: 14, height: 14, tintColor: riskColor}}
+                    resizeMode="contain"
                 />
               )}
             </View>
@@ -235,7 +237,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
           >
             <Image 
               source={chatIcon} 
-              style={{ width: 30, height: 30, tintColor: '#374151' }}
+              style={{ width: 25, height: 25, tintColor: '#374151' }}
               resizeMode="contain"
             />
           </TouchableOpacity>
@@ -258,10 +260,10 @@ export default function CaregiverHomepage({ navigation }: Props) {
                 <View style={caregiverHomeStyles.vitalValueContainer}>
                   <Text style={caregiverHomeStyles.vitalValue}>{elder.gyroscope}</Text>
                   {elder.gyroscope !== 'Normal' && (
-                    <Ionicons 
-                      name="alert-circle" 
-                      size={14} 
-                      color={elder.gyroscope === 'Fell' ? '#f59e0b' : '#6b7280'} 
+                    <Image 
+                        source={hexagonIcon} 
+                        style={{ width: 12, height: 12, tintColor: elder.gyroscope === 'Fell' ? '#f59e0b' : '#6b7280' }}
+                        resizeMode="contain"
                     />
                   )}
                 </View>
@@ -272,10 +274,10 @@ export default function CaregiverHomepage({ navigation }: Props) {
                 <View style={caregiverHomeStyles.vitalValueContainer}>
                   <Text style={caregiverHomeStyles.vitalValue}>{elder.heartRate} Bpm</Text>
                   {(elder.heartRate > 100 || elder.heartRate < 60) && (
-                    <Ionicons 
-                      name="alert-circle" 
-                      size={14} 
-                      color={elder.heartRate > 100 ? '#ef4444' : '#f59e0b'} 
+                    <Image 
+                        source={hexagonIcon} 
+                        style={{ width: 12, height: 12, tintColor: elder.heartRate > 100 ? '#ef4444' : '#f59e0b'}}
+                        resizeMode="contain"
                     />
                   )}
                 </View>
@@ -286,10 +288,10 @@ export default function CaregiverHomepage({ navigation }: Props) {
                 <View style={caregiverHomeStyles.vitalValueContainer}>
                   <Text style={caregiverHomeStyles.vitalValue}>{elder.spO2}%</Text>
                   {elder.spO2 < 95 && (
-                    <Ionicons 
-                      name="alert-circle" 
-                      size={14} 
-                      color="#ef4444" 
+                    <Image 
+                        source={hexagonIcon} 
+                        style={{ width: 12, height: 12, tintColor: "#ef4444" }}
+                        resizeMode="contain"
                     />
                   )}
                 </View>

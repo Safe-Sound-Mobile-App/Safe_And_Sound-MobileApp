@@ -15,9 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { caregiverHomeStyles, createCaregiverHomeStyles } from '../../../global_style/caregiverUseSection/caregiverHomeStyles';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
-import { LinearGradient } from 'expo-linear-gradient';
-import MaskedView from '@react-native-masked-view/masked-view';
 import GradientHeader from '../../../header/GradientHeader';
+import BottomNavbar from '../../../navigation/BottomNavbar';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const diamondIcon = require('../../../../assets/icons/alert/diamond-exclamation.png');
@@ -347,6 +346,8 @@ export default function CaregiverHomepage({ navigation }: Props) {
           {elderData.map((elder, index) => renderElderCard(elder, index))}
         </View>
       </ScrollView>
+
+      <BottomNavbar />
     </SafeAreaView>
   );
 }

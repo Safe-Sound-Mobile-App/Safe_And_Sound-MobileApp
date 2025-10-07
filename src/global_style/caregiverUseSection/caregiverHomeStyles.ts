@@ -20,9 +20,9 @@ export const caregiverHomeStyles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
   },
   header: {
-    height: 80,
+    height: 90,
     paddingTop: 20,
-    paddingBottom: 10,
+    paddingBottom: 20,
     paddingHorizontal: 20,
     backgroundColor: '#ffffff',
     borderBottomLeftRadius: 10,
@@ -50,6 +50,36 @@ export const caregiverHomeStyles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+  },
+  titleContainer: {
+    height: 30,
+  },
+  titleMask: {
+    fontSize: 28,
+    fontWeight: '900',
+    fontFamily: 'BalooBhaijaan2_600SemiBold',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  gradientTitle: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '900',
+    fontFamily: 'BalooBhaijaan2_600SemiBold',
+    color: 'transparent',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+    marginBottom: 10, // เพิ่ม spacing ระหว่าง title และ button
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   scrollContainer: {
     flex: 1,

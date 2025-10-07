@@ -17,6 +17,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import { LinearGradient } from 'expo-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
+import GradientHeader from '../../../header/GradientHeader';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const diamondIcon = require('../../../../assets/icons/alert/diamond-exclamation.png');
@@ -315,29 +316,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
   return (
     <SafeAreaView style={caregiverHomeStyles.container}>
       {/* Header */}
-      <View style={caregiverHomeStyles.header}>
-          {/* App title with gradient */}
-          <MaskedView
-            style={caregiverHomeStyles.titleContainer}
-            maskElement={
-              <Text style={caregiverHomeStyles.titleMask}>
-                Safe & Sound
-              </Text>
-            }
-          >
-            <LinearGradient
-              colors={['#383848', '#008080', '#1DA3A7', '#20A7B1', '#1C959D', '#178085', '#44B589']}
-              locations={[0, 0.38, 0.41, 0.45, 0.48, 0.72, 1]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={caregiverHomeStyles.gradientTitle}
-            >
-              <Text style={caregiverHomeStyles.title}>
-                Safe & Sound
-              </Text>
-            </LinearGradient>
-          </MaskedView>
-      </View>
+      <GradientHeader />
 
       <ScrollView 
         style={caregiverHomeStyles.scrollContainer}

@@ -5,7 +5,7 @@ const { width, height } = Dimensions.get('window');
 // Base font sizes - will be scaled by FontSizeContext
 const baseFontSizes = {
   appTitle: 24,
-  sectionTitle: 20,
+  sectionTitle: 24,
   elderName: 16,
   riskText: 14,
   addButtonText: 12,
@@ -22,31 +22,34 @@ export const caregiverHomeStyles = StyleSheet.create({
   header: {
     height: 80,
     paddingTop: 20,
-    paddingBottom: 15,
+    paddingBottom: 10,
     paddingHorizontal: 20,
     backgroundColor: '#ffffff',
-    borderBottomLeftRadius: 5,
-    borderBottomRightRadius: 5,
+    borderBottomLeftRadius: 10,
+    borderBottomRightRadius: 10,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 8,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.4,
     shadowRadius: 20,
     elevation: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20
+    marginBottom: 10
   },
   appTitle: {
     // fontSize: baseFontSizes.appTitle, // Will be scaled by context
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '900',
     fontFamily: 'BalooBhaijaan2_600SemiBold',
     color: '#008080',
     textAlign: 'center',
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   scrollContainer: {
     flex: 1,

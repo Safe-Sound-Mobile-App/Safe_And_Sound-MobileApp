@@ -116,7 +116,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
   const getCardBackgroundColor = (risk: string) => {
     switch (risk) {
       case 'Danger': return '#fca5a5'; // Light red
-      case 'Warning': return '#fcd34d'; // Light yellow
+      case 'Warning': return '#ffcf77'; // Light yellow
       case 'Normal': return '#ffffff'; // White
       default: return '#ffffff';
     }

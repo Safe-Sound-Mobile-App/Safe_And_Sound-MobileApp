@@ -11,6 +11,7 @@ import ElderInfoForm from "./pages/Authentication/elder/ElderInfoForm";
 import CaregiverInfoForm from "./pages/Authentication/caregiver/CaregiverInfoForm";
 
 import CaregiverHomepage from "./pages/Main/caregiver/caregiverHomePage";
+import AddNewElder from "./pages/Main/caregiver/addNewElder";
 
 export type RootStackParamList = {
   Home: undefined;
@@ -22,6 +23,7 @@ export type RootStackParamList = {
   ElderInfoForm: undefined;
   CaregiverInfoForm: undefined;
   CaregiverHomepage: undefined;
+  AddNewElder: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -39,6 +41,7 @@ const linking = {
             ElderInfoForm: "ElderInfoForm",
             CaregiverInfoForm: "CaregiverInfoForm",
             CaregiverHomepage: "CaregiverHomepage",
+            AddNewElder: "AddNewElder",
         },
     },
 };
@@ -62,6 +65,7 @@ export default function App() {
           <Stack.Screen name="ElderInfoForm" component={ElderInfoForm} />
           <Stack.Screen name="CaregiverInfoForm" component={CaregiverInfoForm} />
           <Stack.Screen name="CaregiverHomepage" component={CaregiverHomepage} />
+          <Stack.Screen name="AddNewElder" component={AddNewElder} />
         </Stack.Navigator>
       </NavigationContainer>
   );

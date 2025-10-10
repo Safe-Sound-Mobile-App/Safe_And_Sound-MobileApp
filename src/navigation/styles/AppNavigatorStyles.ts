@@ -33,7 +33,7 @@ export const navbarStyles = StyleSheet.create({
   // Active indicator dot with gradient (positioned above the icon)
   activeIndicatorContainer: {
     position: 'absolute',
-    top: -28,
+    top: -30,
     alignItems: 'center',
     justifyContent: 'center',
   },

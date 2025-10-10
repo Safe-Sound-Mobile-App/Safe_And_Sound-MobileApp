@@ -19,9 +19,11 @@ import GradientHeader from '../../../header/GradientHeader';
 import BottomNavbar from '../../../navigation/BottomNavbar';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
+const addIcon = require('../../../../assets/icons/plus.png');
 const diamondIcon = require('../../../../assets/icons/alert/diamond-exclamation.png');
 const hexagonIcon = require('../../../../assets/icons/alert/hexagon-exclamation.png');
 const triangleIcon = require('../../../../assets/icons/alert/triangle-exclamation.png');
+const rightIcon = require('../../../../assets/icons/direction/right.png');
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -304,7 +306,11 @@ export default function CaregiverHomepage({ navigation }: Props) {
               style={caregiverHomeStyles.nextButton}
               onPress={() => handleElderInfo(elder.id)}
             >
-              <Ionicons name="chevron-forward" size={20} color="#374151" />
+              <Image 
+                source={rightIcon} 
+                style={{ width: 14, height: 14, tintColor: '#374151' }}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -327,9 +333,13 @@ export default function CaregiverHomepage({ navigation }: Props) {
           
           <TouchableOpacity
             style={caregiverHomeStyles.addButton}
-            onPress={handleAddNewElder}
+            onPress={() => navigation.navigate('AddNewElder')} // Navigate to AddNewElder screen
           >
-            <Ionicons name="add" size={16} color="#ffffff" />
+            <Image 
+              source={addIcon} 
+              style={{ width: 16, height: 16, tintColor: '#ffffff' }}
+              resizeMode="contain"
+            />
             <Text style={caregiverHomeStyles.addButtonText}>Add new elder</Text>
           </TouchableOpacity>
         </View>

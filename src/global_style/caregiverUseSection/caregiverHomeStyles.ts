@@ -174,7 +174,6 @@ export const caregiverHomeStyles = StyleSheet.create({
   chatButton: {
     padding: 8,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   cardBody: {
     marginTop: 15,
@@ -216,7 +215,7 @@ export const caregiverHomeStyles = StyleSheet.create({
   nextButton: {
     padding: 8,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     marginLeft: 15,
   },
 });

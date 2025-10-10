@@ -241,7 +241,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
           >
             <Image 
               source={chatIcon} 
-              style={{ width: 25, height: 25, tintColor: '#374151' }}
+              style={{ width: 26, height: 26, tintColor: '#374151' }}
               resizeMode="contain"
             />
           </TouchableOpacity>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { addNewElderStyles } from '../../../global_style/caregiverUseSection/addNewElderStyles';
 import GradientHeader from '../../../header/GradientHeader';
@@ -32,6 +32,9 @@ export default function AddNewElder({ navigation }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ElderSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [selectedElder, setSelectedElder] = useState<ElderSearchResult | null>(null);
 
   // Real-time search effect
   useEffect(() => {
@@ -57,29 +60,22 @@ export default function AddNewElder({ navigation }: Props) {
 
   // Handle add elder
   const handleAddElder = (elder: ElderSearchResult) => {
-    Alert.alert(
-      'Add Elder',
-      `Do you want to add ${elder.name} (UID: ${elder.uid}) to your care list?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Add',
-          onPress: () => {
-            console.log(`Adding elder: ${elder.name} (${elder.uid})`);
-            // TODO: Call API to add elder to caregiver's list
-            Alert.alert('Success', `${elder.name} has been added to your care list.`, [
-              {
-                text: 'OK',
-                onPress: () => navigation.goBack()
-              }
-            ]);
-          }
-        }
-      ]
-    );
+    setSelectedElder(elder);
+    setShowConfirmModal(true);
+  };
+
+  const confirmAddElder = () => {
+    if (selectedElder) {
+      console.log(`Adding elder: ${selectedElder.name} (${selectedElder.uid})`);
+      // TODO: Call API to add elder to caregiver's list
+      setShowConfirmModal(false);
+      setShowSuccessModal(true);
+    }
+  };
+
+  const handleSuccessClose = () => {
+    setShowSuccessModal(false);
+    navigation.goBack();
   };
 
   // Render elder card
@@ -170,6 +166,78 @@ export default function AddNewElder({ navigation }: Props) {
 
       {/* Bottom Navigation */}
       <BottomNavbar />
+
+      {/* Confirm Modal */}
+      <Modal
+        visible={showConfirmModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
+        <View style={addNewElderStyles.modalOverlay}>
+          <View style={addNewElderStyles.modalContainer}>
+            <View style={addNewElderStyles.modalIconContainer}>
+              <Image
+                source={elderIcon}
+                style={addNewElderStyles.modalIcon}
+                resizeMode="contain"
+              />
+            </View>
+
+            <Text style={addNewElderStyles.modalTitle}>Add Elder</Text>
+            <Text style={addNewElderStyles.modalMessage}>
+              Do you want to add {selectedElder?.name} (UID: {selectedElder?.uid}) to your care list?
+            </Text>
+
+            <View style={addNewElderStyles.modalButtonContainer}>
+              <TouchableOpacity
+                style={addNewElderStyles.modalCancelButton}
+                onPress={() => setShowConfirmModal(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={addNewElderStyles.modalCancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={addNewElderStyles.modalConfirmButton}
+                onPress={confirmAddElder}
+                activeOpacity={0.7}
+              >
+                <Text style={addNewElderStyles.modalConfirmButtonText}>Add</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        visible={showSuccessModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleSuccessClose}
+      >
+        <View style={addNewElderStyles.modalOverlay}>
+          <View style={addNewElderStyles.modalContainer}>
+            <View style={addNewElderStyles.successIconContainer}>
+              <Ionicons name="checkmark-circle" size={64} color="#10b981" />
+            </View>
+
+            <Text style={addNewElderStyles.modalTitle}>Success!</Text>
+            <Text style={addNewElderStyles.modalMessage}>
+              {selectedElder?.name} has been added to your care list.
+            </Text>
+
+            <TouchableOpacity
+              style={addNewElderStyles.modalSuccessButton}
+              onPress={handleSuccessClose}
+              activeOpacity={0.7}
+            >
+              <Text style={addNewElderStyles.modalSuccessButtonText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

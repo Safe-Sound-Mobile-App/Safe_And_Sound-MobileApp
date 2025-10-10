@@ -25,7 +25,7 @@ const navItems: NavItem[] = [
   { name: 'Home', icon: homeIcon, route: 'CaregiverHomepage', isImplemented: true },
   { name: 'Notification', icon: notificationIcon, route: 'ComingSoon', isImplemented: false },
   { name: 'Account', icon: accountIcon, route: 'ComingSoon', isImplemented: false },
-  { name: 'Settings', icon: settingsIcon, route: 'ComingSoon', isImplemented: false },
+  { name: 'Settings', icon: settingsIcon, route: 'CaregiverSetting', isImplemented: true },
 ];
 
 export default function BottomNavbar() {

@@ -30,28 +30,27 @@ export const navbarStyles = StyleSheet.create({
     paddingVertical: 8,
     position: 'relative',
   },
-  // Active indicator dot with gradient (positioned above the icon)
-  activeIndicatorContainer: {
+  
+  // Gradient dot - positioned above icon
+  dotContainer: {
     position: 'absolute',
     top: -30,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 20,
   },
   activeIndicatorDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
   },
-  // Icon container with circle background and shadow
-  iconContainer: {
+  
+  // Circle background - positioned behind icon, same level as icon
+  circleBackground: {
+    position: 'absolute',
     width: 56,
     height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderRadius: 28,
-    backgroundColor: 'transparent',
-  },
-  activeIconContainer: {
     backgroundColor: '#ffffff',
     shadowColor: '#000',
     shadowOffset: {
@@ -61,8 +60,16 @@ export const navbarStyles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
-    // Make it float above
-    transform: [{ translateY: -8 }],
+    zIndex: 1, // Behind icon
+  },
+  
+  // Icon container - always on top
+  iconContainer: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10, // Above circle
   },
   navIcon: {
     width: 24,

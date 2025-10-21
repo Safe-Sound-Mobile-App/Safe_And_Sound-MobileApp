@@ -16,7 +16,6 @@ import { caregiverHomeStyles, createCaregiverHomeStyles } from '../../../global_
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
-import BottomNavbar from '../../../navigation/BottomNavbar';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const addIcon = require('../../../../assets/icons/plus.png');
@@ -357,7 +356,6 @@ export default function CaregiverHomepage({ navigation }: Props) {
         </View>
       </ScrollView>
 
-      <BottomNavbar />
     </SafeAreaView>
   );
 }

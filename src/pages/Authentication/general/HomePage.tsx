@@ -88,7 +88,7 @@ export default function Home({ navigation }: Props) {
                         styles.signInButton,
                         { backgroundColor: '#008080', paddingVertical: 12, paddingHorizontal: 16, borderRadius: 10 }
                     ]}
-                    onPress={() => navigation.navigate('CaregiverHomepage')}
+                    onPress={() => navigation.navigate('MainTabs')}
                     activeOpacity={0.8}
                 >
                     <Text style={{ color: 'white', textAlign: 'center', fontWeight: '700' }}>Caregiver HomePage</Text>

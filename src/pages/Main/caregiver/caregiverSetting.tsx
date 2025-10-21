@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, Image, ScrollView } from 'react-native';
 import { caregiverSettingStyles } from '../../../global_style/caregiverUseSection/caregiverSettingStyles';
 import GradientHeader from '../../../header/GradientHeader';
-import BottomNavbar from '../../../navigation/BottomNavbar';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 
@@ -93,8 +92,7 @@ export default function CaregiverSetting({ navigation }: Props) {
         </View>
       </ScrollView>
 
-      {/* Bottom Navigation */}
-      <BottomNavbar />
+      {/* BottomNavbar is already handled by Tab Navigator - DO NOT add here */}
     </SafeAreaView>
   );
 }

@@ -45,16 +45,12 @@ export const notificationStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  tabActiveIndicator: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
+  tabButtonActive: {
+    backgroundColor: '#ffffff',
+    borderWidth: 0,
   },
   tabText: {
     fontSize: 13,
@@ -150,17 +146,14 @@ export const notificationStyles = StyleSheet.create({
     elevation: 3,
     position: 'relative',
   },
-  activityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  activityContent: {
     marginBottom: 8,
   },
   activityTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flex: 1,
+    marginBottom: 6,
   },
   activityTitle: {
     fontSize: 15,

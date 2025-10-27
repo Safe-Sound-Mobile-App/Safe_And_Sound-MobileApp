@@ -158,7 +158,7 @@ export default function CaregiverNotification({ navigation }: Props) {
     >
       {!notif.isRead && <View style={notificationStyles.unreadDot} />}
       
-      <View style={notificationStyles.activityHeader}>
+      <View style={notificationStyles.activityContent}>
         <View style={notificationStyles.activityTitleRow}>
           <Text style={[
             notificationStyles.activityTitle,
@@ -174,15 +174,16 @@ export default function CaregiverNotification({ navigation }: Props) {
             />
           )}
         </View>
-        <Text style={notificationStyles.activityBadge}>{notif.timestamp}</Text>
+        
+        <Text style={[
+          notificationStyles.activityMessage,
+          { color: notif.type === 'message' ? '#6b7280' : (notif.type === 'danger' ? '#7f1d1d' : '#78350f') }
+        ]}>
+          {notif.elderName} - {notif.message}
+        </Text>
       </View>
       
-      <Text style={[
-        notificationStyles.activityMessage,
-        { color: notif.type === 'message' ? '#6b7280' : (notif.type === 'danger' ? '#7f1d1d' : '#78350f') }
-      ]}>
-        {notif.elderName} - {notif.message}
-      </Text>
+      <Text style={notificationStyles.activityTimestamp}>{notif.timestamp}</Text>
     </TouchableOpacity>
   );
 
@@ -207,47 +208,65 @@ export default function CaregiverNotification({ navigation }: Props) {
         {/* Tab Buttons */}
         <View style={notificationStyles.tabContainer}>
           <TouchableOpacity
-            style={notificationStyles.tabButton}
+            style={{ flex: 1 }}
             onPress={() => setActiveTab('elder_accept')}
             activeOpacity={0.7}
           >
-            {activeTab === 'elder_accept' && (
+            {activeTab === 'elder_accept' ? (
               <LinearGradient
                 colors={['#383848', '#008080', '#1DA3A7', '#20A7B1', '#1C959D', '#178085', '#44B589']}
                 locations={[0, 0.38, 0.41, 0.45, 0.48, 0.72, 1]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={notificationStyles.tabActiveIndicator}
-              />
+                style={{
+                  borderRadius: 25,
+                  padding: 4,
+                }}
+              >
+                <View style={[notificationStyles.tabButton, { backgroundColor: '#e5e7eb' }]}>
+                  <Text style={[notificationStyles.tabText, notificationStyles.tabTextActive]}>
+                    Elder Accept
+                  </Text>
+                </View>
+              </LinearGradient>
+            ) : (
+              <View style={notificationStyles.tabButton}>
+                <Text style={notificationStyles.tabText}>
+                  Elder Accept
+                </Text>
+              </View>
             )}
-            <Text style={[
-              notificationStyles.tabText,
-              activeTab === 'elder_accept' && notificationStyles.tabTextActive
-            ]}>
-              Elder Accept
-            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={notificationStyles.tabButton}
+            style={{ flex: 1 }}
             onPress={() => setActiveTab('activities')}
             activeOpacity={0.7}
           >
-            {activeTab === 'activities' && (
+            {activeTab === 'activities' ? (
               <LinearGradient
                 colors={['#383848', '#008080', '#1DA3A7', '#20A7B1', '#1C959D', '#178085', '#44B589']}
                 locations={[0, 0.38, 0.41, 0.45, 0.48, 0.72, 1]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
-                style={notificationStyles.tabActiveIndicator}
-              />
+                style={{
+                  borderRadius: 25,
+                  padding: 4,
+                }}
+              >
+                <View style={[notificationStyles.tabButton, { backgroundColor: '#e5e7eb' }]}>
+                  <Text style={[notificationStyles.tabText, notificationStyles.tabTextActive]}>
+                    Activities
+                  </Text>
+                </View>
+              </LinearGradient>
+            ) : (
+              <View style={notificationStyles.tabButton}>
+                <Text style={notificationStyles.tabText}>
+                  Activities
+                </Text>
+              </View>
             )}
-            <Text style={[
-              notificationStyles.tabText,
-              activeTab === 'activities' && notificationStyles.tabTextActive
-            ]}>
-              Activities Notification
-            </Text>
           </TouchableOpacity>
         </View>
 

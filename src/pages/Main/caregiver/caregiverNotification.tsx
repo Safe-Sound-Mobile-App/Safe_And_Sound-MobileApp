@@ -12,6 +12,8 @@ import type { RootStackParamList, MainTabParamList } from "../../../App";
 const notificationIcon = require('../../../../assets/icons/navbar/notification.png');
 const triangleIcon = require('../../../../assets/icons/alert/triangle-exclamation.png');
 const diamondIcon = require('../../../../assets/icons/alert/diamond-exclamation.png');
+const filterIcon = require('../../../../assets/icons/filter.png');
+const downArrowIcon = require('../../../../assets/icons//direction/down.png');
 
 type CombinedNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Notification'>,
@@ -277,11 +279,19 @@ export default function CaregiverNotification({ navigation }: Props) {
               style={notificationStyles.filterButton}
               onPress={() => setShowFilterModal(true)}
             >
-              <Ionicons name="filter" size={16} color="#6b7280" />
+              <Image
+                source={filterIcon}
+                style={{ width: 16, height: 16, tintColor: "#6b7280" }}
+                resizeMode="contain"
+              />
               <Text style={notificationStyles.filterText}>
                 Filter by: {activeFilters.length > 0 ? activeFilters.join(', ') : 'None'}
               </Text>
-              <Ionicons name="chevron-down" size={16} color="#6b7280" />
+              <Image
+                source={downArrowIcon}
+                style={{ width: 14, height: 14, tintColor: "#6b7280" }}
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </View>
         )}

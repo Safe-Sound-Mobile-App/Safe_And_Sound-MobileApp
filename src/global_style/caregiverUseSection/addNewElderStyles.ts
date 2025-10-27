@@ -14,7 +14,7 @@ export const addNewElderStyles = StyleSheet.create({
   titleSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 25,
+    marginTop: 20,
     marginBottom: 20,
   },
   titleIcon: {
@@ -229,5 +229,37 @@ export const addNewElderStyles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'BalooBhaijaan2_600SemiBold',
     color: '#ffffff',
+  },
+  backButton: {
+    position: 'absolute',
+    paddingRight: 12,
+    bottom: 50,
+    left: 20,
+    zIndex: 10,
+    width: 100,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  backIcon: {
+    width: 30,
+    height: 30,
+    tintColor: '#000000',
+  },
+  backText: {
+    fontSize: 14,
+    color: '#000000',
+    fontFamily: 'BalooBhaijaan2_400Regular',
   },
 });

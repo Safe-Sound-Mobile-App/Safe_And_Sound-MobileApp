@@ -3,13 +3,13 @@ import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image, ScrollVie
 import { Ionicons } from '@expo/vector-icons';
 import { addNewElderStyles } from '../../../global_style/caregiverUseSection/addNewElderStyles';
 import GradientHeader from '../../../header/GradientHeader';
-import BottomNavbar from '../../../navigation/BottomNavbar';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 
 const elderIcon = require('../../../../assets/icons/elder.png');
 const searchIcon = require('../../../../assets/icons/search.png');
 const addIcon = require('../../../../assets/icons/plus.png');
+const backIcon = require('../../../../assets/icons/direction/left.png');
 
 // Mock Elder Search Result Interface
 interface ElderSearchResult {
@@ -110,6 +110,20 @@ export default function AddNewElder({ navigation }: Props) {
       {/* Header */}
       <GradientHeader title="Safe & Sound" />
 
+      {/* Back Button */}
+      <TouchableOpacity
+        style={addNewElderStyles.backButton}
+        onPress={() => navigation.goBack()}
+        activeOpacity={0.7}
+      >
+        <Image
+          source={backIcon}
+          style={addNewElderStyles.backIcon}
+          resizeMode="contain"
+        />
+        <Text style={addNewElderStyles.backText}>Back</Text>
+      </TouchableOpacity>
+
       <ScrollView
         style={addNewElderStyles.scrollContainer}
         showsVerticalScrollIndicator={false}
@@ -163,9 +177,6 @@ export default function AddNewElder({ navigation }: Props) {
           )}
         </View>
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <BottomNavbar />
 
       {/* Confirm Modal */}
       <Modal

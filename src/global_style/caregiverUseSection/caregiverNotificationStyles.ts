@@ -38,7 +38,7 @@ export const notificationStyles = StyleSheet.create({
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 8,
     paddingHorizontal: 20,
     backgroundColor: '#e5e7eb',
     borderRadius: 25,

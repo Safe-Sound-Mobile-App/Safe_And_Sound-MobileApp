@@ -16,6 +16,7 @@ import CaregiverInfoForm from "./pages/Authentication/caregiver/CaregiverInfoFor
 
 // Main screens (with navbar)
 import CaregiverHomepage from "./pages/Main/caregiver/caregiverHomePage";
+import CaregiverNotification from "./pages/Main/caregiver/caregiverNotification";
 import CaregiverSetting from "./pages/Main/caregiver/caregiverSetting";
 
 // Modal screens (no navbar)
@@ -40,9 +41,19 @@ export type RootStackParamList = {
   Notification: undefined;
   Account: undefined;
   CaregiverSetting: undefined;
+  ElderProfile: { elderId: string };
+  Chat: { elderId: string };
+  ElderInformation: { elderId: string };
   
   // Modal Screens
   AddNewElder: undefined;
+};
+
+export type MainTabParamList = {
+  CaregiverHomepage: undefined;
+  Notification: undefined;
+  Account: undefined;
+  CaregiverSetting: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -93,7 +104,7 @@ function MainTabs() {
       }}
     >
       <Tab.Screen name="CaregiverHomepage" component={CaregiverHomepage} />
-      <Tab.Screen name="Notification" component={NotificationScreen} />
+      <Tab.Screen name="Notification" component={CaregiverNotification} />
       <Tab.Screen name="Account" component={AccountScreen} />
       <Tab.Screen name="CaregiverSetting" component={CaregiverSetting} />
     </Tab.Navigator>

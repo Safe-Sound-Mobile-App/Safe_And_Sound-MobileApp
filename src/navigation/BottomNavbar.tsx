@@ -20,7 +20,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { name: 'Home', icon: homeIcon, route: 'CaregiverHomepage', isImplemented: true },
   { name: 'Notification', icon: notificationIcon, route: 'Notification', isImplemented: true },
-  { name: 'Account', icon: accountIcon, route: 'Account', isImplemented: false },
+  { name: 'Account', icon: accountIcon, route: 'Account', isImplemented: true },
   { name: 'Settings', icon: settingsIcon, route: 'CaregiverSetting', isImplemented: true },
 ];
 

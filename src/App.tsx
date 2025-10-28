@@ -17,10 +17,13 @@ import CaregiverInfoForm from "./pages/Authentication/caregiver/CaregiverInfoFor
 // Main screens (with navbar)
 import CaregiverHomepage from "./pages/Main/caregiver/caregiverHomePage";
 import CaregiverNotification from "./pages/Main/caregiver/caregiverNotification";
+import CaregiverProfile from "./pages/Main/caregiver/caregiverProfile";
 import CaregiverSetting from "./pages/Main/caregiver/caregiverSetting";
+import CaregiverEditProfile from "./pages/Main/caregiver/caregiverEditProfile";
 
 // Modal screens (no navbar)
 import AddNewElder from "./pages/Main/caregiver/addNewElder";
+import caregiverEditProfile from "./pages/Main/caregiver/caregiverEditProfile";
 
 export type RootStackParamList = {
   // Authentication Stack
@@ -44,6 +47,9 @@ export type RootStackParamList = {
   ElderProfile: { elderId: string };
   Chat: { elderId: string };
   ElderInformation: { elderId: string };
+
+  // EditProfile: { profile: UserProfile };
+  caregiverEditProfile: { profile: any };
   
   // Modal Screens
   AddNewElder: undefined;
@@ -81,6 +87,7 @@ const linking = {
         },
       },
       AddNewElder: "AddNewElder",
+      caregiverEditProfile: "caregiverEditProfile",
     },
   },
 };
@@ -105,7 +112,7 @@ function MainTabs() {
     >
       <Tab.Screen name="CaregiverHomepage" component={CaregiverHomepage} />
       <Tab.Screen name="Notification" component={CaregiverNotification} />
-      <Tab.Screen name="Account" component={AccountScreen} />
+      <Tab.Screen name="Account" component={CaregiverProfile} />
       <Tab.Screen name="CaregiverSetting" component={CaregiverSetting} />
     </Tab.Navigator>
   );
@@ -133,13 +140,8 @@ export default function App() {
         <Stack.Screen name="MainTabs" component={MainTabs} />
 
         {/* Modal/Full-screen pages - NO NAVBAR */}
-        <Stack.Screen
-          name="AddNewElder"
-          component={AddNewElder}
-          options={{
-            presentation: 'card', // or 'modal' for slide up animation
-          }}
-        />
+        <Stack.Screen name="AddNewElder" component={AddNewElder} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="caregiverEditProfile" component={caregiverEditProfile} options={{ presentation: 'card'}}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -24,6 +24,8 @@ import CaregiverEditProfile from "./pages/Main/caregiver/caregiverEditProfile";
 // Modal screens (no navbar)
 import AddNewElder from "./pages/Main/caregiver/addNewElder";
 import caregiverEditProfile from "./pages/Main/caregiver/caregiverEditProfile";
+import CaregiverChat from "./pages/Main/caregiver/caregiverChat";
+import CaregiverElderInfo from "./pages/Main/caregiver/caregiverElderInfo";
 
 export type RootStackParamList = {
   // Authentication Stack
@@ -53,6 +55,8 @@ export type RootStackParamList = {
   
   // Modal Screens
   AddNewElder: undefined;
+  caregiverChat: { elderId: string; elderName: string};
+  caregiverElderInfo: { elderId: string };
 };
 
 export type MainTabParamList = {
@@ -142,6 +146,8 @@ export default function App() {
         {/* Modal/Full-screen pages - NO NAVBAR */}
         <Stack.Screen name="AddNewElder" component={AddNewElder} options={{ presentation: 'card'}}/>
         <Stack.Screen name="caregiverEditProfile" component={caregiverEditProfile} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="caregiverChat" component={CaregiverChat} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="caregiverElderInfo" component={CaregiverElderInfo} options={{ presentation: 'card'}}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

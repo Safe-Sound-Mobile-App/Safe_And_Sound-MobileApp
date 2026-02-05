@@ -236,7 +236,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
 
           <TouchableOpacity
             style={caregiverHomeStyles.chatButton}
-            onPress={() => handleChatWithElder(elder.id, elder.name)}
+            onPress={() => navigation.navigate('caregiverChat', { elderId: elder.id, elderName: elder.name })} // Navigate to Chat screen
           >
             <Image 
               source={chatIcon} 
@@ -303,7 +303,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
 
             <TouchableOpacity
               style={caregiverHomeStyles.nextButton}
-              onPress={() => handleElderInfo(elder.id)}
+              onPress={() => navigation.navigate('caregiverElderInfo', { elderId: elder.id})}
             >
               <Image 
                 source={rightIcon} 

@@ -21,9 +21,16 @@ import CaregiverProfile from "./pages/Main/caregiver/caregiverProfile";
 import CaregiverSetting from "./pages/Main/caregiver/caregiverSetting";
 import CaregiverEditProfile from "./pages/Main/caregiver/caregiverEditProfile";
 
+// Elder
+import ElderHomePage from "./pages/Main/elder/elderHomePage";
+import ElderNotification from "./pages/Main/elder/elderNotificationPage";
+import ElderProfile from "./pages/Main/elder/elderProfilePage";
+import ElderSetting from "./pages/Main/elder/elderSettingPage";
+
 // Modal screens (no navbar)
 import AddNewElder from "./pages/Main/caregiver/addNewElder";
 import caregiverEditProfile from "./pages/Main/caregiver/caregiverEditProfile";
+import elderEditProfile from "./pages/Main/elder/elderEditProfile";
 
 export type RootStackParamList = {
   // Authentication Stack
@@ -38,18 +45,22 @@ export type RootStackParamList = {
   
   // Main App
   MainTabs: undefined;
+  ElderMainTabs: undefined;
   
   // Tab Screens
   CaregiverHomepage: undefined;
+  ElderHomepage: undefined;
   Notification: undefined;
   Account: undefined;
   CaregiverSetting: undefined;
   ElderProfile: { elderId: string };
   Chat: { elderId: string };
   ElderInformation: { elderId: string };
+  ElderSetting: { elderId: string };
 
   // EditProfile: { profile: UserProfile };
   caregiverEditProfile: { profile: any };
+  elderEditProfile: { profile: any };
   
   // Modal Screens
   AddNewElder: undefined;
@@ -118,6 +129,23 @@ function MainTabs() {
   );
 }
 
+// Elder Tab
+function ElderMainTabs() {
+  return (
+      <Tab.Navigator
+          tabBar={(props) => <BottomNavbar {...props} />}
+          screenOptions={{
+            headerShown: false,
+          }}
+      >
+        <Tab.Screen name="ElderHomepage" component={ElderHomePage} />
+        <Tab.Screen name="ElderNotification" component={ElderNotification} />
+        <Tab.Screen name="ElderAccount" component={ElderProfile} />
+        <Tab.Screen name="ElderSetting" component={ElderSetting} />
+      </Tab.Navigator>
+  );
+}
+
 export default function App() {
   return (
     <NavigationContainer linking={linking}>
@@ -138,10 +166,12 @@ export default function App() {
 
         {/* Main App with Tabs - HAS NAVBAR */}
         <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="ElderMainTabs" component={ElderMainTabs} />
 
         {/* Modal/Full-screen pages - NO NAVBAR */}
         <Stack.Screen name="AddNewElder" component={AddNewElder} options={{ presentation: 'card'}}/>
         <Stack.Screen name="caregiverEditProfile" component={caregiverEditProfile} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="elderEditProfile" component={elderEditProfile} options={{ presentation: 'card'}}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

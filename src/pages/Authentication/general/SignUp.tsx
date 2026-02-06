@@ -1,52 +1,75 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { signUpStyles } from '../../../global_style/signUpStyles';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
+// --- นำเข้า Firebase Auth ---
+import auth from '@react-native-firebase/auth';
 
 const googleIcon = require('../../../../assets/icons/google.png');
 const usernameIcon = require('../../../../assets/icons/username.png');
 const passwordIcon = require('../../../../assets/icons/password.png');
-const eyeIcon = require('../../../../assets/icons/invisible.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignUp">;
 
 export default function SignUp({ navigation }: Props) {
-  const [username, setUsername] = useState('');
+  // ใน Firebase 'username' พื้นฐานจะเป็น 'email' นะครับ
+  const [email, setEmail] = useState(''); 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSignIn = () => {
-    console.log('Signing in with:', { username, password });
-    // Handle sign in logic here
-  };
+  // ฟังก์ชันสมัครสมาชิก
+  const handleSignUp = async () => {
+    // 1. ตรวจสอบข้อมูลเบื้องต้น
+    if (!email || !password || !confirmPassword) {
+      Alert.alert("Error", "Please fill in all fields");
+      return;
+    }
 
-  const handleSignUp = () => {
-    console.log('Navigating to SignUp...');
-    navigation.navigate("RoleSelection");
-  };
+    if (password !== confirmPassword) {
+      Alert.alert("Error", "Passwords do not match");
+      return;
+    }
 
-  const handleForgotPassword = () => {
-    console.log('Navigating to Forgot Password...');
-    // Handle forgot password logic
+    try {
+      // 2. ส่งข้อมูลให้ Firebase สร้าง User
+      const userCredential = await auth().createUserWithEmailAndPassword(email, password);
+      
+      console.log('User account created & signed in!');
+      
+      // 3. เมื่อสำเร็จ นำทางไปหน้า RoleSelection
+      // เราสามารถส่ง uid ไปเก็บใน Firestore ต่อที่หน้าโน้นได้
+      navigation.navigate("RoleSelection"); 
+
+    } catch (error: any) {
+      // 4. จัดการ Error ต่างๆ
+      if (error.code === 'auth/email-already-in-use') {
+        Alert.alert("Error", "That email address is already in use!");
+      } else if (error.code === 'auth/invalid-email') {
+        Alert.alert("Error", "That email address is invalid!");
+      } else if (error.code === 'auth/weak-password') {
+        Alert.alert("Error", "Password should be at least 6 characters");
+      } else {
+        Alert.alert("Error", error.message);
+      }
+    }
   };
 
   const handleGoogleSignIn = () => {
     console.log('Google Sign In pressed');
-    // Handle Google sign in logic
+    // เดี๋ยวเราจะมาทำ Logic Google แยกต่างหากหลังจากทำ Email สำเร็จครับ
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f8f9fa' }}>
       <View style={signUpStyles.signUpContainer}>
         
-        {/* Sign Up Title */}
         <Text style={signUpStyles.signUpTitle}>SIGN UP</Text>
         
-        {/* Username Input */}
+        {/* Email Input (เปลี่ยนจาก Username เพื่อให้สอดคล้องกับ Firebase) */}
         <View style={signUpStyles.inputContainer}>
             <Image 
               source={usernameIcon} 
@@ -55,11 +78,12 @@ export default function SignUp({ navigation }: Props) {
             />
           <TextInput
             style={signUpStyles.textInput}
-            placeholder="Username"
+            placeholder="Email"
             placeholderTextColor="#9ca3af"
-            value={username}
-            onChangeText={setUsername}
+            value={email}
+            onChangeText={setEmail}
             autoCapitalize="none"
+            keyboardType="email-address"
           />
         </View>
 
@@ -128,7 +152,6 @@ export default function SignUp({ navigation }: Props) {
           <Text style={signUpStyles.signUpSubmitButtonText}>SIGN UP</Text>
         </TouchableOpacity>
 
-        {/* Sign In Link */}
         <View style={signUpStyles.signInContainer}>
           <Text style={signUpStyles.signInText}>Already have an account? </Text>
           <TouchableOpacity onPress={() => navigation.navigate("SignIn")}>
@@ -136,14 +159,12 @@ export default function SignUp({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* OR Divider */}
         <View style={signUpStyles.dividerContainer}>
           <View style={signUpStyles.dividerLine} />
           <Text style={signUpStyles.dividerText}>OR</Text>
           <View style={signUpStyles.dividerLine} />
         </View>
 
-        {/* Google Sign In Button - New Design */}
         <TouchableOpacity
           style={signUpStyles.googleSignInButton}
           onPress={handleGoogleSignIn}

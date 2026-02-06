@@ -3,6 +3,7 @@
     "name": "Safe_And_Sound-MobileApp",
     "slug": "Safe_And_Sound-MobileApp",
     "version": "1.0.0",
+    "scheme": "com.googleusercontent.apps.218489558221-18egrq2tv93j67bdsn8lt7kfd7ucv9na",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,9 +14,13 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.safeandsound.app",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.safeandsound.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -26,7 +31,21 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
-    ]
+      "expo-font",
+      "@react-native-firebase/app",
+      [
+        "@react-native-firebase/auth",
+        {
+        "ios": {
+          "googleServicesFile": "./GoogleService-Info.plist"
+        }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "86decaf3-633d-45a8-bc39-99fbb39e5479"
+      }
+    }
   }
 }

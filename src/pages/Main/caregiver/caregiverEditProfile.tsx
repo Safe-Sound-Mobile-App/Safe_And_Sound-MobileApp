@@ -144,19 +144,19 @@ export default function caregiverEditProfile({ navigation, route }: Props) {
           {/* Buttons */}
           <View style={editProfileStyles.buttonContainer}>
             <TouchableOpacity
-              style={editProfileStyles.confirmButton}
-              onPress={handleConfirm}
-              activeOpacity={0.8}
-            >
-              <Text style={editProfileStyles.confirmButtonText}>Confirm</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={editProfileStyles.cancelButton}
               onPress={handleCancel}
               activeOpacity={0.8}
             >
               <Text style={editProfileStyles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={editProfileStyles.confirmButton}
+              onPress={handleConfirm}
+              activeOpacity={0.8}
+            >
+              <Text style={editProfileStyles.confirmButtonText}>Confirm</Text>
             </TouchableOpacity>
           </View>
         </View>

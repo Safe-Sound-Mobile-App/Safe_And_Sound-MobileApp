@@ -1,7 +1,9 @@
 {
   "expo": {
     "name": "Safe_And_Sound-MobileApp",
-    "slug": "Safe_And_Sound-MobileApp",
+    "slug": "safe-and-sound-mobileapp",
+    "scheme": "safeandsound",
+    "owner": "tagch",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,13 +14,15 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tagch.safeandsound"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "com.tagch.safeandsound",
       "edgeToEdgeEnabled": true
     },
     "web": {

@@ -140,6 +140,7 @@ export default function RoleSelection({ navigation }: Props) {
   const renderRoleButton = (role: 'elder' | 'caregiver', imageSource: any, label: string) => {
     const isSelected = selectedRole === role;
     const animationValue = role === 'elder' ? elderAnimation : caregiverAnimation;
+    const iconName = role === 'elder' ? 'walk' : 'people';
     
     return (
       <TouchableOpacity
@@ -153,15 +154,11 @@ export default function RoleSelection({ navigation }: Props) {
         {/* Icon Container */}
         <View style={roleSelectionStyles.iconWrapper}>
           {!isSelected ? (
-            // Show black icon when not selected
-            <Image 
-              source={imageSource} 
-              style={{ 
-                width: 40, 
-                height: 40,
-                tintColor: '#000000',
-              }}
-              resizeMode="contain"
+            // Show black icon when not selected - Use Ionicons as fallback
+            <Ionicons 
+              name={iconName} 
+              size={40} 
+              color="#000000" 
             />
           ) : (
             // Show gradient icon when selected
@@ -169,13 +166,10 @@ export default function RoleSelection({ navigation }: Props) {
               style={roleSelectionStyles.iconMaskContainer}
               maskElement={
                 <View style={roleSelectionStyles.iconMask}>
-                  <Image 
-                    source={imageSource} 
-                    style={{ 
-                      width: 40, 
-                      height: 40 
-                    }}
-                    resizeMode="contain"
+                  <Ionicons 
+                    name={iconName} 
+                    size={40} 
+                    color="#000000" 
                   />
                 </View>
               }

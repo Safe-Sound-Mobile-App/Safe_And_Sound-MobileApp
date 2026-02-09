@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -36,7 +36,27 @@
       ],
       "@react-native-firebase/auth",
       "@react-native-firebase/crashlytics",
-      "expo-build-properties"
-    ]
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true,
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "86decaf3-633d-45a8-bc39-99fbb39e5479"
+      }
+    },
+    "owner": "tagch",
+    "updates": {
+      "url": "https://u.expo.dev/86decaf3-633d-45a8-bc39-99fbb39e5479"
+    },
+    "runtimeVersion": "1.0.0"
   }
 }

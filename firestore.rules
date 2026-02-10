@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function hasActiveRelationship(caregiverId, elderId) {
+      return exists(/databases/$(database)/documents/relationships/$(caregiverId + '_' + elderId)) ||
+             exists(/databases/$(database)/documents/relationships/$(elderId + '_' + caregiverId));
+    }
+    
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId);
+      allow delete: if false;
+    }
+    
+    match /elders/{userId} {
+      allow read, write: if isOwner(userId);
+      allow read: if isAuthenticated() && hasActiveRelationship(request.auth.uid, userId);
+    }
+    
+    match /caregivers/{userId} {
+      allow read, write: if isOwner(userId);
+      allow read: if isAuthenticated() && hasActiveRelationship(userId, request.auth.uid);
+    }
+    
+    match /relationships/{relationshipId} {
+      allow read: if isAuthenticated() && (
+        resource.data.caregiverId == request.auth.uid ||
+        resource.data.elderId == request.auth.uid
+      );
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated() && (
+        resource.data.caregiverId == request.auth.uid ||
+        resource.data.elderId == request.auth.uid
+      );
+    }
+    
+    match /healthData/{elderId}/{document=**} {
+      allow read: if isOwner(elderId) || hasActiveRelationship(request.auth.uid, elderId);
+      allow write: if isOwner(elderId);
+    }
+    
+    match /locations/{elderId}/{document=**} {
+      allow read: if isOwner(elderId) || hasActiveRelationship(request.auth.uid, elderId);
+      allow write: if isOwner(elderId);
+    }
+    
+    match /chats/{chatId} {
+      allow read: if isAuthenticated() && (
+        resource.data.participants.caregiverId == request.auth.uid ||
+        resource.data.participants.elderId == request.auth.uid
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.participants.caregiverId == request.auth.uid ||
+        resource.data.participants.elderId == request.auth.uid
+      );
+      
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && (
+          get(/databases/$(database)/documents/chats/$(chatId)).data.participants.caregiverId == request.auth.uid ||
+          get(/databases/$(database)/documents/chats/$(chatId)).data.participants.elderId == request.auth.uid
+        );
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated();
+      }
+    }
+    
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated();
+    }
+    
+    match /emergencyAlerts/{alertId} {
+      allow read: if isAuthenticated() && (
+        resource.data.elderId == request.auth.uid ||
+        hasActiveRelationship(request.auth.uid, resource.data.elderId)
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.elderId == request.auth.uid ||
+        hasActiveRelationship(request.auth.uid, resource.data.elderId)
+      );
+    }
+    
+    match /settings/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+  }
+}

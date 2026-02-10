@@ -120,10 +120,16 @@ export const signInWithGoogle = async (): Promise<AuthResult> => {
  */
 export const signOut = async (): Promise<AuthResult> => {
   try {
-    // Sign out from Google if user signed in with Google
-    const isSignedIn = await GoogleSignin.isSignedIn();
-    if (isSignedIn) {
-      await GoogleSignin.signOut();
+    // Try to sign out from Google (if applicable)
+    // Don't let Google sign out failure prevent Firebase sign out
+    try {
+      const isSignedIn = await GoogleSignin.isSignedIn();
+      if (isSignedIn) {
+        await GoogleSignin.signOut();
+      }
+    } catch (googleError) {
+      console.log('Google sign out error (non-critical):', googleError);
+      // Continue to Firebase sign out even if Google sign out fails
     }
     
     // Sign out from Firebase
@@ -133,9 +139,10 @@ export const signOut = async (): Promise<AuthResult> => {
       success: true,
     };
   } catch (error: any) {
+    console.error('Sign out error:', error);
     return {
       success: false,
-      error: 'An error occurred during sign out',
+      error: error.message || 'An error occurred during sign out',
     };
   }
 };

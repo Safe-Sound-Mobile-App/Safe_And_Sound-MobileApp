@@ -12,9 +12,13 @@ import {
     Pressable,
     Modal,
     useWindowDimensions,
+    Alert,
+    ActivityIndicator,
 } from "react-native";
 import Svg, { Path, Circle } from "react-native-svg";
 import { styles } from "../../../global_style/elderInfoForm.styles";
+import { createElderProfile } from "../../../services/firestore";
+import auth from "@react-native-firebase/auth";
 
 type Props = { navigation: any };
 
@@ -41,6 +45,9 @@ export default function ElderInfoForm({ navigation }: Props) {
     // modals
     const [infoVisible, setInfoVisible] = useState(false);
     const [policyVisible, setPolicyVisible] = useState(false);
+
+    // loading state
+    const [loading, setLoading] = useState(false);
 
     const markTouched = (field: string) =>
         setTouched((t) => ({ ...t, [field]: true }));
@@ -98,19 +105,56 @@ export default function ElderInfoForm({ navigation }: Props) {
         !errors.age &&
         agree;
 
-    const onConfirm = () => {
+    const onConfirm = async () => {
         if (!canSubmit) return;
-        const payload = {
-            firstName,
-            lastName,
-            tel,
-            height: Number(height),
-            weight: parseFloat(weight),
-            age: Number(age),
-            medicalHistory,
-        };
-        console.log("Submitting:", payload);
-        // navigation.navigate("NextScreen");
+        
+        setLoading(true);
+        try {
+            const user = auth().currentUser;
+            if (!user) {
+                Alert.alert("Error", "No authenticated user found");
+                setLoading(false);
+                return;
+            }
+
+            // Determine auth provider
+            const authProvider = user.providerData[0]?.providerId === 'google.com' ? 'google' : 'email';
+
+            // Create elder profile in Firestore
+            const result = await createElderProfile(
+                user.uid,
+                {
+                    firstName,
+                    lastName,
+                    tel: tel || null,
+                    height: Number(height),
+                    weight: parseFloat(weight),
+                    age: Number(age),
+                    medicalHistory: medicalHistory || '',
+                },
+                authProvider
+            );
+
+            if (result.success) {
+                Alert.alert(
+                    "Success",
+                    "Elder profile created successfully!",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () => navigation.navigate("ElderMainTabs"),
+                        },
+                    ]
+                );
+            } else {
+                Alert.alert("Error", result.error || "Failed to create profile");
+            }
+        } catch (error: any) {
+            console.error("Error creating elder profile:", error);
+            Alert.alert("Error", "An unexpected error occurred");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -227,10 +271,14 @@ export default function ElderInfoForm({ navigation }: Props) {
                         {/* Confirm button */}
                         <TouchableOpacity
                             onPress={onConfirm}
-                            disabled={!canSubmit}
-                            style={[styles.confirmBtn, !canSubmit && { opacity: 0.5 }]}
+                            disabled={!canSubmit || loading}
+                            style={[styles.confirmBtn, (!canSubmit || loading) && { opacity: 0.5 }]}
                         >
-                            <Text style={styles.confirmText}>Confirm</Text>
+                            {loading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.confirmText}>Confirm</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </ScrollView>

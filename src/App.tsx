@@ -1,8 +1,12 @@
 import * as React from "react";
+import { useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { ActivityIndicator, View } from "react-native";
 import BottomNavbar from "./navigation/BottomNavbar";
+import auth from "@react-native-firebase/auth";
+import { getUserProfile } from "./services/firestore";
 
 // Authentication screens (no navbar)
 import Home from "./pages/Authentication/general/HomePage";
@@ -151,9 +155,61 @@ function ElderMainTabs() {
 }
 
 export default function App() {
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Auth state listener
+  useEffect(() => {
+    const subscriber = auth().onAuthStateChanged(async (firebaseUser) => {
+      setUser(firebaseUser);
+
+      if (firebaseUser) {
+        // User is logged in, check their profile
+        const profileResult = await getUserProfile(firebaseUser.uid);
+        
+        if (profileResult.success && profileResult.data) {
+          setUserRole(profileResult.data.role);
+        } else {
+          setUserRole(null);
+        }
+      } else {
+        // User is logged out
+        setUserRole(null);
+      }
+
+      if (initializing) setInitializing(false);
+    });
+
+    return subscriber; // unsubscribe on unmount
+  }, []);
+
+  // Show loading screen while checking auth state
+  if (initializing) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>
+        <ActivityIndicator size="large" color="#111827" />
+      </View>
+    );
+  }
+
+  // Determine initial route based on auth state
+  const getInitialRouteName = () => {
+    if (user && userRole === 'elder') {
+      return 'ElderMainTabs';
+    } else if (user && userRole === 'caregiver') {
+      return 'MainTabs';
+    } else if (user && !userRole) {
+      return 'RoleSelection';
+    } else {
+      return 'Home';
+    }
+  };
+
   return (
     <NavigationContainer linking={linking}>
       <Stack.Navigator
+        initialRouteName={getInitialRouteName()}
         screenOptions={{
           headerShown: false,
         }}

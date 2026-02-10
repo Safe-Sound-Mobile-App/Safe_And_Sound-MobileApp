@@ -1,18 +1,34 @@
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
-    scroll: { paddingVertical: 20, alignItems: "center" },
+    scroll: { 
+        paddingVertical: 40, 
+        paddingHorizontal: 20,
+        alignItems: "center",
+        flexGrow: 1,
+    },
     card: {
         backgroundColor: "#fff",
-        borderRadius: 12,
-        padding: 20,
+        borderRadius: 16,
+        padding: 24,
         width: "100%",
+        marginTop: 20,
+        marginBottom: 20,
         shadowColor: "#000",
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+        shadowOpacity: 0.08,
+        shadowRadius: 12,
+        shadowOffset: { width: 0, height: 4 },
+        elevation: 4,
     },
-    title: { fontSize: 22, fontWeight: "700", marginBottom: 20, color: "#111827", textAlign: "center" },
+    title: { 
+        fontSize: 24, 
+        fontWeight: "700", 
+        marginBottom: 24, 
+        marginTop: 8,
+        color: "#111827", 
+        textAlign: "center",
+        letterSpacing: 0.5,
+    },
     label: { fontSize: 14, marginBottom: 6, color: "#374151" },
     input: {
         borderWidth: 1,

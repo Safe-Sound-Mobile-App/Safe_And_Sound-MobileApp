@@ -8,6 +8,8 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
+    Modal,
+    TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -15,7 +17,7 @@ import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
 import { elderHomeStyles as styles } from "../../../global_style/elderUseSection/elderHomeStyles";
 import auth from '@react-native-firebase/auth';
-import { getElderCaregivers, getUserProfile } from '../../../services/firestore';
+import { getElderCaregivers, getUserProfile, updateElderHealthStatus, sendEmergencyAlert } from '../../../services/firestore';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const defaultAvatar = require('../../../../assets/icons/elder.png');
@@ -38,6 +40,13 @@ type Props = NativeStackScreenProps<RootStackParamList, "ElderHomepage">;
 export default function ElderHomepage({ navigation }: Props) {
     const [caregivers, setCaregivers] = useState<CaregiverData[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showHealthModal, setShowHealthModal] = useState(false);
+    const [updatingHealth, setUpdatingHealth] = useState(false);
+    
+    // Health data states
+    const [heartRate, setHeartRate] = useState('70');
+    const [spO2, setSpO2] = useState('98');
+    const [gyroscope, setGyroscope] = useState<'Normal' | 'Fell'>('Normal');
 
     // Fetch caregivers data from Firestore
     useEffect(() => {
@@ -91,13 +100,103 @@ export default function ElderHomepage({ navigation }: Props) {
         fetchCaregivers();
     }, []);
 
-    const handleChat = (id: string, name: string) => {
-        console.log(`Chat with ${name}`);
+    const handleChat = (caregiverId: string, caregiverName: string) => {
+        navigation.navigate('ElderChatPage', { caregiverId, caregiverName });
     };
 
-    const handleEmergency = () => {
-        console.warn('EMERGENCY PRESSED');
-        Alert.alert('Emergency', 'Emergency alert sent to all caregivers!');
+    const handleEmergency = async () => {
+        const currentUser = auth().currentUser;
+        if (!currentUser) {
+            Alert.alert('Error', 'No authenticated user found');
+            return;
+        }
+
+        Alert.alert(
+            'Emergency Alert',
+            'Are you sure you want to send an emergency alert to all your caregivers?',
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Send Alert',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            // Get user profile for name
+                            const profileResult = await getUserProfile(currentUser.uid);
+                            if (!profileResult.success || !profileResult.data) {
+                                Alert.alert('Error', 'Failed to get user profile');
+                                return;
+                            }
+
+                            const elderName = `${profileResult.data.firstName} ${profileResult.data.lastName}`;
+
+                            // Send emergency alert
+                            const result = await sendEmergencyAlert(currentUser.uid, elderName);
+
+                            if (result.success) {
+                                Alert.alert(
+                                    'Alert Sent!',
+                                    'Emergency alert has been sent to all your caregivers.',
+                                    [{ text: 'OK' }]
+                                );
+                            } else {
+                                Alert.alert('Error', result.error || 'Failed to send emergency alert');
+                            }
+                        } catch (error) {
+                            console.error('Emergency alert error:', error);
+                            Alert.alert('Error', 'An unexpected error occurred');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleUpdateHealth = async () => {
+        const currentUser = auth().currentUser;
+        if (!currentUser) {
+            Alert.alert('Error', 'No authenticated user found');
+            return;
+        }
+
+        // Validate inputs
+        const hrValue = parseInt(heartRate);
+        const spo2Value = parseInt(spO2);
+
+        if (isNaN(hrValue) || hrValue < 30 || hrValue > 200) {
+            Alert.alert('Error', 'Heart rate must be between 30-200 bpm');
+            return;
+        }
+
+        if (isNaN(spo2Value) || spo2Value < 0 || spo2Value > 100) {
+            Alert.alert('Error', 'SpO2 must be between 0-100%');
+            return;
+        }
+
+        setUpdatingHealth(true);
+        try {
+            const result = await updateElderHealthStatus(
+                currentUser.uid,
+                hrValue,
+                spo2Value,
+                gyroscope
+            );
+
+            if (result.success) {
+                Alert.alert('Success', 'Health data updated successfully!');
+                setShowHealthModal(false);
+            } else {
+                Alert.alert('Error', result.error || 'Failed to update health data');
+            }
+        } catch (error) {
+            console.error('Update health error:', error);
+            Alert.alert('Error', 'An unexpected error occurred');
+        } finally {
+            setUpdatingHealth(false);
+        }
     };
 
     const getStatusColor = (status: string) => {
@@ -155,6 +254,28 @@ export default function ElderHomepage({ navigation }: Props) {
                     <Text style={styles.countText}>{caregivers.length}/5</Text>
                 </View>
 
+                {/* Update Health Data Button */}
+                <TouchableOpacity
+                    style={{
+                        backgroundColor: '#008080',
+                        paddingVertical: 12,
+                        paddingHorizontal: 20,
+                        borderRadius: 12,
+                        marginHorizontal: 20,
+                        marginBottom: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                    onPress={() => setShowHealthModal(true)}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="fitness-outline" size={20} color="#fff" />
+                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 }}>
+                        Update Health Data
+                    </Text>
+                </TouchableOpacity>
+
                 {/* Loading State */}
                 {loading && (
                     <View style={{ padding: 40, alignItems: 'center' }}>
@@ -196,6 +317,167 @@ export default function ElderHomepage({ navigation }: Props) {
                     <Text style={styles.emergencyText}>Emergency</Text>
                 </TouchableOpacity>
             </View>
+
+            {/* Update Health Data Modal */}
+            <Modal
+                visible={showHealthModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowHealthModal(false)}
+            >
+                <View style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    padding: 20,
+                }}>
+                    <View style={{
+                        backgroundColor: '#fff',
+                        borderRadius: 16,
+                        padding: 24,
+                        width: '100%',
+                        maxWidth: 400,
+                    }}>
+                        <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 20, textAlign: 'center' }}>
+                            Update Health Data
+                        </Text>
+
+                        {/* Heart Rate Input */}
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={{ fontSize: 14, color: '#374151', marginBottom: 6 }}>
+                                Heart Rate (bpm)
+                            </Text>
+                            <TextInput
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: '#d1d5db',
+                                    borderRadius: 10,
+                                    padding: 12,
+                                    fontSize: 16,
+                                }}
+                                placeholder="70"
+                                keyboardType="numeric"
+                                value={heartRate}
+                                onChangeText={setHeartRate}
+                                editable={!updatingHealth}
+                            />
+                        </View>
+
+                        {/* SpO2 Input */}
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={{ fontSize: 14, color: '#374151', marginBottom: 6 }}>
+                                SpO2 (%)
+                            </Text>
+                            <TextInput
+                                style={{
+                                    borderWidth: 1,
+                                    borderColor: '#d1d5db',
+                                    borderRadius: 10,
+                                    padding: 12,
+                                    fontSize: 16,
+                                }}
+                                placeholder="98"
+                                keyboardType="numeric"
+                                value={spO2}
+                                onChangeText={setSpO2}
+                                editable={!updatingHealth}
+                            />
+                        </View>
+
+                        {/* Gyroscope Status */}
+                        <View style={{ marginBottom: 20 }}>
+                            <Text style={{ fontSize: 14, color: '#374151', marginBottom: 8 }}>
+                                Movement Status
+                            </Text>
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                <TouchableOpacity
+                                    style={{
+                                        flex: 1,
+                                        padding: 12,
+                                        borderRadius: 10,
+                                        borderWidth: 2,
+                                        borderColor: gyroscope === 'Normal' ? '#008080' : '#d1d5db',
+                                        backgroundColor: gyroscope === 'Normal' ? '#f0fdfa' : '#fff',
+                                        alignItems: 'center',
+                                    }}
+                                    onPress={() => setGyroscope('Normal')}
+                                    disabled={updatingHealth}
+                                >
+                                    <Text style={{
+                                        color: gyroscope === 'Normal' ? '#008080' : '#6b7280',
+                                        fontWeight: gyroscope === 'Normal' ? '600' : '400',
+                                    }}>
+                                        Normal
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={{
+                                        flex: 1,
+                                        padding: 12,
+                                        borderRadius: 10,
+                                        borderWidth: 2,
+                                        borderColor: gyroscope === 'Fell' ? '#ef4444' : '#d1d5db',
+                                        backgroundColor: gyroscope === 'Fell' ? '#fef2f2' : '#fff',
+                                        alignItems: 'center',
+                                    }}
+                                    onPress={() => setGyroscope('Fell')}
+                                    disabled={updatingHealth}
+                                >
+                                    <Text style={{
+                                        color: gyroscope === 'Fell' ? '#ef4444' : '#6b7280',
+                                        fontWeight: gyroscope === 'Fell' ? '600' : '400',
+                                    }}>
+                                        Fell
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Buttons */}
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <TouchableOpacity
+                                style={{
+                                    flex: 1,
+                                    padding: 14,
+                                    borderRadius: 10,
+                                    borderWidth: 1,
+                                    borderColor: '#d1d5db',
+                                    alignItems: 'center',
+                                }}
+                                onPress={() => setShowHealthModal(false)}
+                                disabled={updatingHealth}
+                            >
+                                <Text style={{ color: '#6b7280', fontSize: 15, fontWeight: '600' }}>
+                                    Cancel
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={{
+                                    flex: 1,
+                                    padding: 14,
+                                    borderRadius: 10,
+                                    backgroundColor: '#008080',
+                                    alignItems: 'center',
+                                    opacity: updatingHealth ? 0.6 : 1,
+                                }}
+                                onPress={handleUpdateHealth}
+                                disabled={updatingHealth}
+                            >
+                                {updatingHealth ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
+                                        Update
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }

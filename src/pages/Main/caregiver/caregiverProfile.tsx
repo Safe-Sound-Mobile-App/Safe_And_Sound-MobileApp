@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Image, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { profileStyles } from '../../../global_style/caregiverUseSection/caregiverProfileStyles';
 import GradientHeader from '../../../header/GradientHeader';
@@ -7,6 +7,8 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList, MainTabParamList } from "../../../App";
+import auth from '@react-native-firebase/auth';
+import { getUserProfile, getCaregiverElders } from '../../../services/firestore';
 
 // Import icons
 const accountIcon = require('../../../../assets/icons/profile/account.png');
@@ -38,17 +40,52 @@ interface UserProfile {
 }
 
 export default function CaregiverProfile({ navigation }: Props) {
-  const [profile, setProfile] = useState<UserProfile>({
-    firstName: 'Fname',
-    lastName: 'Lname',
-    uid: '000000000',
-    role: 'Caregiver',
-    tel: '0812345678',
-    elderCount: 3,
-    maxElders: 5,
-    profileImage: null,
-    backgroundImage: null,
-  });
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'No authenticated user');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch user profile
+        const userResult = await getUserProfile(currentUser.uid);
+        if (!userResult.success || !userResult.data) {
+          Alert.alert('Error', userResult.error || 'Failed to load profile');
+          setLoading(false);
+          return;
+        }
+
+        // Fetch elder count
+        const eldersResult = await getCaregiverElders(currentUser.uid);
+        const elderCount = eldersResult.success && eldersResult.data ? eldersResult.data.length : 0;
+
+        setProfile({
+          firstName: userResult.data.firstName,
+          lastName: userResult.data.lastName,
+          uid: currentUser.uid,
+          role: 'Caregiver',
+          tel: userResult.data.tel || 'N/A',
+          elderCount: elderCount,
+          maxElders: 5,
+          profileImage: null,
+          backgroundImage: null,
+        });
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        Alert.alert('Error', 'An unexpected error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   // Handle profile image upload
   const handleProfileImageUpload = () => {
@@ -83,6 +120,28 @@ export default function CaregiverProfile({ navigation }: Props) {
   const handleEditProfile = () => {
     navigation.navigate('caregiverEditProfile' as any, { profile });
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={profileStyles.container}>
+        <GradientHeader title="Safe & Sound" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#008080" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <SafeAreaView style={profileStyles.container}>
+        <GradientHeader title="Safe & Sound" />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: '#6b7280' }}>Failed to load profile</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={profileStyles.container}>

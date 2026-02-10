@@ -209,6 +209,28 @@ export const getUserProfile = async (uid: string): Promise<ServiceResult<User>> 
 };
 
 /**
+ * Update user profile
+ */
+export const updateUserProfile = async (
+  uid: string,
+  updates: {
+    firstName?: string;
+    lastName?: string;
+    tel?: string;
+  }
+): Promise<ServiceResult<void>> => {
+  try {
+    await firestore().collection('users').doc(uid).update(updates);
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to update user profile',
+    };
+  }
+};
+
+/**
  * Update user status (online/offline/busy)
  */
 export const updateUserStatus = async (
@@ -758,6 +780,54 @@ export const getCaregiverElders = async (
 };
 
 /**
+ * Search for an elder by UID (userId)
+ */
+export const searchElderByUid = async (
+  uid: string
+): Promise<ServiceResult<{ user: User; elder: Elder }>> => {
+  try {
+    // First, get user info
+    const userResult = await getUserProfile(uid);
+    if (!userResult.success || !userResult.data) {
+      return {
+        success: false,
+        error: 'Elder not found',
+      };
+    }
+
+    // Check if user is an elder
+    if (userResult.data.role !== 'elder') {
+      return {
+        success: false,
+        error: 'User is not an elder',
+      };
+    }
+
+    // Get elder profile
+    const elderDoc = await firestore().collection('elders').doc(uid).get();
+    if (!elderDoc.exists) {
+      return {
+        success: false,
+        error: 'Elder profile not found',
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        user: userResult.data,
+        elder: elderDoc.data() as Elder,
+      },
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to search elder',
+    };
+  }
+};
+
+/**
  * Get all caregivers for an elder
  */
 export const getElderCaregivers = async (
@@ -795,6 +865,359 @@ export const getElderCaregivers = async (
     return {
       success: false,
       error: error.message || 'Failed to get elder caregivers',
+    };
+  }
+};
+
+// =====================================
+// Chat Functions
+// =====================================
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  message: string;
+  timestamp: Date;
+}
+
+/**
+ * Send a chat message
+ */
+export const sendChatMessage = async (
+  elderId: string,
+  caregiverId: string,
+  senderId: string,
+  senderName: string,
+  message: string
+): Promise<ServiceResult<void>> => {
+  try {
+    const chatId = [elderId, caregiverId].sort().join('_');
+    
+    await firestore().collection('chats').doc(chatId).collection('messages').add({
+      senderId,
+      senderName,
+      message,
+      timestamp: firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to send message',
+    };
+  }
+};
+
+/**
+ * Listen to chat messages (real-time)
+ */
+export const listenToChatMessages = (
+  elderId: string,
+  caregiverId: string,
+  onMessagesUpdate: (messages: ChatMessage[]) => void,
+  onError: (error: string) => void
+) => {
+  const chatId = [elderId, caregiverId].sort().join('_');
+
+  const unsubscribe = firestore()
+    .collection('chats')
+    .doc(chatId)
+    .collection('messages')
+    .orderBy('timestamp', 'asc')
+    .onSnapshot(
+      (snapshot) => {
+        const messages = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          senderId: doc.data().senderId,
+          senderName: doc.data().senderName,
+          message: doc.data().message,
+          timestamp: doc.data().timestamp?.toDate() || new Date(),
+        }));
+        onMessagesUpdate(messages);
+      },
+      (error) => {
+        onError(error.message || 'Failed to load messages');
+      }
+    );
+
+  return unsubscribe;
+};
+
+// =====================================
+// Emergency Alert Functions
+// =====================================
+
+export interface EmergencyAlert {
+  id: string;
+  elderId: string;
+  elderName: string;
+  timestamp: Date;
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
+  status: 'active' | 'resolved';
+}
+
+/**
+ * Send an emergency alert
+ */
+export const sendEmergencyAlert = async (
+  elderId: string,
+  elderName: string,
+  location?: { latitude: number; longitude: number }
+): Promise<ServiceResult<string>> => {
+  try {
+    // Create the emergency alert
+    const alertRef = await firestore().collection('emergencyAlerts').add({
+      elderId,
+      elderName,
+      timestamp: firestore.FieldValue.serverTimestamp(),
+      location: location || null,
+      status: 'active',
+    });
+
+    // Get all caregivers for this elder
+    const relationshipsSnapshot = await firestore()
+      .collection('relationships')
+      .where('elderId', '==', elderId)
+      .where('status', '==', 'active')
+      .get();
+
+    // Send notification to each caregiver
+    const notificationPromises = relationshipsSnapshot.docs.map((doc) => {
+      const caregiverId = doc.data().caregiverId;
+      return firestore().collection('notifications').add({
+        userId: caregiverId,
+        type: 'emergency',
+        title: 'Emergency Alert!',
+        message: `${elderName} needs immediate help!`,
+        relatedId: alertRef.id,
+        timestamp: firestore.FieldValue.serverTimestamp(),
+        read: false,
+      });
+    });
+
+    await Promise.all(notificationPromises);
+
+    return {
+      success: true,
+      data: alertRef.id,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to send emergency alert',
+    };
+  }
+};
+
+/**
+ * Resolve an emergency alert
+ */
+export const resolveEmergencyAlert = async (
+  alertId: string
+): Promise<ServiceResult<void>> => {
+  try {
+    await firestore().collection('emergencyAlerts').doc(alertId).update({
+      status: 'resolved',
+      resolvedAt: firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to resolve emergency alert',
+    };
+  }
+};
+
+/**
+ * Listen to emergency alerts for a caregiver
+ */
+export const listenToEmergencyAlerts = (
+  caregiverId: string,
+  onAlertsUpdate: (alerts: EmergencyAlert[]) => void,
+  onError: (error: string) => void
+) => {
+  // First, get all elder IDs for this caregiver
+  const unsubscribeRelationships = firestore()
+    .collection('relationships')
+    .where('caregiverId', '==', caregiverId)
+    .where('status', '==', 'active')
+    .onSnapshot(
+      (relationshipsSnapshot) => {
+        const elderIds = relationshipsSnapshot.docs.map((doc) => doc.data().elderId);
+
+        if (elderIds.length === 0) {
+          onAlertsUpdate([]);
+          return;
+        }
+
+        // Listen to active alerts for these elders
+        const unsubscribeAlerts = firestore()
+          .collection('emergencyAlerts')
+          .where('elderId', 'in', elderIds)
+          .where('status', '==', 'active')
+          .orderBy('timestamp', 'desc')
+          .onSnapshot(
+            (alertsSnapshot) => {
+              const alerts = alertsSnapshot.docs.map((doc) => ({
+                id: doc.id,
+                elderId: doc.data().elderId,
+                elderName: doc.data().elderName,
+                timestamp: doc.data().timestamp?.toDate() || new Date(),
+                location: doc.data().location || undefined,
+                status: doc.data().status,
+              }));
+              onAlertsUpdate(alerts);
+            },
+            (error) => {
+              onError(error.message || 'Failed to load emergency alerts');
+            }
+          );
+
+        return unsubscribeAlerts;
+      },
+      (error) => {
+        onError(error.message || 'Failed to load relationships');
+      }
+    );
+
+  return unsubscribeRelationships;
+};
+
+// =====================================
+// Notification Functions
+// =====================================
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'emergency' | 'message' | 'danger' | 'warning' | 'elder_accept' | 'caregiver_request';
+  title: string;
+  message: string;
+  relatedId?: string;
+  timestamp: Date;
+  read: boolean;
+}
+
+/**
+ * Listen to notifications for a user
+ */
+export const listenToNotifications = (
+  userId: string,
+  onNotificationsUpdate: (notifications: Notification[]) => void,
+  onError: (error: string) => void
+) => {
+  const unsubscribe = firestore()
+    .collection('notifications')
+    .where('userId', '==', userId)
+    .orderBy('timestamp', 'desc')
+    .limit(50)
+    .onSnapshot(
+      (snapshot) => {
+        const notifications = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          userId: doc.data().userId,
+          type: doc.data().type,
+          title: doc.data().title,
+          message: doc.data().message,
+          relatedId: doc.data().relatedId || undefined,
+          timestamp: doc.data().timestamp?.toDate() || new Date(),
+          read: doc.data().read || false,
+        }));
+        onNotificationsUpdate(notifications);
+      },
+      (error) => {
+        onError(error.message || 'Failed to load notifications');
+      }
+    );
+
+  return unsubscribe;
+};
+
+/**
+ * Mark notification as read
+ */
+export const markNotificationAsRead = async (
+  notificationId: string
+): Promise<ServiceResult<void>> => {
+  try {
+    await firestore().collection('notifications').doc(notificationId).update({
+      read: true,
+    });
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to mark notification as read',
+    };
+  }
+};
+
+/**
+ * Get pending caregiver requests for an elder
+ */
+export const getPendingCaregiverRequests = (
+  elderId: string,
+  onRequestsUpdate: (requests: Array<{ id: string; caregiverId: string; caregiverName: string }>) => void,
+  onError: (error: string) => void
+) => {
+  const unsubscribe = firestore()
+    .collection('relationships')
+    .where('elderId', '==', elderId)
+    .where('status', '==', 'pending')
+    .onSnapshot(
+      async (snapshot) => {
+        const requestPromises = snapshot.docs.map(async (doc) => {
+          const caregiverId = doc.data().caregiverId;
+          const caregiverProfile = await getUserProfile(caregiverId);
+          
+          return {
+            id: doc.id,
+            caregiverId,
+            caregiverName: caregiverProfile.success && caregiverProfile.data
+              ? `${caregiverProfile.data.firstName} ${caregiverProfile.data.lastName}`
+              : 'Unknown',
+          };
+        });
+
+        const requests = await Promise.all(requestPromises);
+        onRequestsUpdate(requests);
+      },
+      (error) => {
+        onError(error.message || 'Failed to load caregiver requests');
+      }
+    );
+
+  return unsubscribe;
+};
+
+/**
+ * Accept or decline a caregiver request
+ */
+export const respondToCaregiverRequest = async (
+  relationshipId: string,
+  accept: boolean
+): Promise<ServiceResult<void>> => {
+  try {
+    if (accept) {
+      await firestore().collection('relationships').doc(relationshipId).update({
+        status: 'active',
+        acceptedAt: firestore.FieldValue.serverTimestamp(),
+      });
+    } else {
+      await firestore().collection('relationships').doc(relationshipId).delete();
+    }
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to respond to caregiver request',
     };
   }
 };

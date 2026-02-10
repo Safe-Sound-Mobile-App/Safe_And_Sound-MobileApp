@@ -1,30 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image, ScrollView, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image, ScrollView, Modal, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { addNewElderStyles } from '../../../global_style/caregiverUseSection/addNewElderStyles';
 import GradientHeader from '../../../header/GradientHeader';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
+import auth from '@react-native-firebase/auth';
+import { searchElderByUid, createRelationship } from '../../../services/firestore';
 
 const elderIcon = require('../../../../assets/icons/elder.png');
 const searchIcon = require('../../../../assets/icons/search.png');
 const addIcon = require('../../../../assets/icons/plus.png');
 const backIcon = require('../../../../assets/icons/direction/left.png');
 
-// Mock Elder Search Result Interface
+// Elder Search Result Interface
 interface ElderSearchResult {
   uid: string;
   name: string;
   image: any;
 }
-
-// Mock database of available elders
-const mockElderDatabase: ElderSearchResult[] = [
-  { uid: 'ELDER66', name: 'Elder66', image: require('../../../../assets/icons/elder.png') },
-  { uid: 'ELDER101', name: 'Elder101', image: require('../../../../assets/icons/elder.png') },
-  { uid: 'ELDER45', name: 'Elder45', image: require('../../../../assets/icons/elder.png') },
-  { uid: 'ELDER89', name: 'Elder89', image: require('../../../../assets/icons/elder.png') },
-];
 
 type Props = NativeStackScreenProps<RootStackParamList, "AddNewElder">;
 
@@ -35,6 +29,7 @@ export default function AddNewElder({ navigation }: Props) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [selectedElder, setSelectedElder] = useState<ElderSearchResult | null>(null);
+  const [adding, setAdding] = useState(false);
 
   // Real-time search effect
   useEffect(() => {
@@ -46,14 +41,28 @@ export default function AddNewElder({ navigation }: Props) {
 
     setIsSearching(true);
 
-    // Simulate API call delay
-    const searchTimeout = setTimeout(() => {
-      const results = mockElderDatabase.filter(elder =>
-        elder.uid.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setSearchResults(results);
-      setIsSearching(false);
-    }, 300); // 300ms debounce
+    // Search in Firestore
+    const searchTimeout = setTimeout(async () => {
+      try {
+        const result = await searchElderByUid(searchQuery.trim());
+        
+        if (result.success && result.data) {
+          const elderData: ElderSearchResult = {
+            uid: result.data.user.uid,
+            name: `${result.data.user.firstName} ${result.data.user.lastName}`,
+            image: require('../../../../assets/icons/elder.png'),
+          };
+          setSearchResults([elderData]);
+        } else {
+          setSearchResults([]);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500); // 500ms debounce
 
     return () => clearTimeout(searchTimeout);
   }, [searchQuery]);
@@ -64,12 +73,35 @@ export default function AddNewElder({ navigation }: Props) {
     setShowConfirmModal(true);
   };
 
-  const confirmAddElder = () => {
-    if (selectedElder) {
-      console.log(`Adding elder: ${selectedElder.name} (${selectedElder.uid})`);
-      // TODO: Call API to add elder to caregiver's list
-      setShowConfirmModal(false);
-      setShowSuccessModal(true);
+  const confirmAddElder = async () => {
+    if (!selectedElder) return;
+
+    setAdding(true);
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'No authenticated user found');
+        return;
+      }
+
+      // Create relationship
+      const result = await createRelationship(
+        currentUser.uid,
+        selectedElder.uid,
+        'professional' // or 'family', 'volunteer'
+      );
+
+      if (result.success) {
+        setShowConfirmModal(false);
+        setShowSuccessModal(true);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to add elder');
+      }
+    } catch (error: any) {
+      console.error('Add elder error:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -205,16 +237,22 @@ export default function AddNewElder({ navigation }: Props) {
                 style={addNewElderStyles.modalCancelButton}
                 onPress={() => setShowConfirmModal(false)}
                 activeOpacity={0.7}
+                disabled={adding}
               >
                 <Text style={addNewElderStyles.modalCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={addNewElderStyles.modalConfirmButton}
+                style={[addNewElderStyles.modalConfirmButton, adding && { opacity: 0.6 }]}
                 onPress={confirmAddElder}
                 activeOpacity={0.7}
+                disabled={adding}
               >
-                <Text style={addNewElderStyles.modalConfirmButtonText}>Add</Text>
+                {adding ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={addNewElderStyles.modalConfirmButtonText}>Add</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>

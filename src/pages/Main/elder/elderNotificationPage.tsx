@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Image, Modal, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Image, Modal, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { elderNotificationStyles } from '../../../global_style/elderUseSection/elderNotificationStyles';
@@ -8,6 +8,8 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList, MainTabParamList } from "../../../App";
+import auth from '@react-native-firebase/auth';
+import { listenToNotifications, getPendingCaregiverRequests, respondToCaregiverRequest, markNotificationAsRead, Notification } from '../../../services/firestore';
 
 // --- Icons ---
 const notificationIcon = require('../../../../assets/icons/navbar/notification.png');
@@ -25,56 +27,74 @@ type Props = {
     navigation: CombinedNavigationProp;
 };
 
-// --- Types ---
-interface CaregiverRequest {
-    id: string;
-    name: string;
-    status: 'pending';
-}
-
-interface ActivityNotification {
-    id: string;
-    type: 'message' | 'danger' | 'warning';
-    title: string;
-    senderName: string;
-    message: string;
-    timestamp: string;
-    isRead: boolean;
-}
-
-// --- Mock Data ---
-const mockCaregiverRequests: CaregiverRequest[] = [
-    { id: '1', name: 'Caregiver4', status: 'pending' },
-    { id: '2', name: 'Caregiver5', status: 'pending' },
-];
-
-const mockActivityNotifications: ActivityNotification[] = [
-    { id: '3', type: 'message', title: 'Message', senderName: 'Caregiver1', message: "I'm arrived.", timestamp: '23/3/2025 - 20:02', isRead: false },
-    { id: '4', type: 'danger', title: 'Danger Alert', senderName: 'System', message: 'Heart Rate Drop', timestamp: '23/3/2025 - 20:00', isRead: false },
-    { id: '5', type: 'warning', title: 'Warning Alert', senderName: 'System', message: 'Heart Rate Drop', timestamp: '23/3/2025 - 19:58', isRead: false },
-];
-
 export default function ElderNotification({ navigation }: Props) {
     // Tabs: 'caregiver_request' or 'activities'
     const [activeTab, setActiveTab] = useState<'caregiver_request' | 'activities'>('caregiver_request');
 
     // Data States
-    const [requests, setRequests] = useState(mockCaregiverRequests);
-    const [activities, setActivities] = useState(mockActivityNotifications);
+    const [requests, setRequests] = useState<Array<{ id: string; caregiverId: string; caregiverName: string }>>([]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [loading, setLoading] = useState(true);
 
     // Filter States
     const [showFilterModal, setShowFilterModal] = useState(false);
     const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
+    useEffect(() => {
+        const currentUser = auth().currentUser;
+        if (!currentUser) {
+            Alert.alert('Error', 'No authenticated user');
+            setLoading(false);
+            return;
+        }
+
+        // Listen to notifications
+        const unsubscribeNotifications = listenToNotifications(
+            currentUser.uid,
+            (newNotifications) => {
+                setNotifications(newNotifications);
+            },
+            (error) => {
+                console.error('Notifications error:', error);
+            }
+        );
+
+        // Listen to caregiver requests
+        const unsubscribeRequests = getPendingCaregiverRequests(
+            currentUser.uid,
+            (newRequests) => {
+                setRequests(newRequests);
+                setLoading(false);
+            },
+            (error) => {
+                console.error('Requests error:', error);
+                setLoading(false);
+            }
+        );
+
+        return () => {
+            unsubscribeNotifications();
+            unsubscribeRequests();
+        };
+    }, []);
+
     // --- Handlers: Requests ---
-    const handleAcceptRequest = (id: string, name: string) => {
-        Alert.alert("Request Accepted", `You have accepted ${name}.`);
-        setRequests(prev => prev.filter(req => req.id !== id));
+    const handleAcceptRequest = async (id: string, name: string) => {
+        const result = await respondToCaregiverRequest(id, true);
+        if (result.success) {
+            Alert.alert("Request Accepted", `You have accepted ${name}.`);
+        } else {
+            Alert.alert("Error", result.error || 'Failed to accept request');
+        }
     };
 
-    const handleDeclineRequest = (id: string, name: string) => {
-        Alert.alert("Request Declined", `You have declined ${name}.`);
-        setRequests(prev => prev.filter(req => req.id !== id));
+    const handleDeclineRequest = async (id: string, name: string) => {
+        const result = await respondToCaregiverRequest(id, false);
+        if (result.success) {
+            Alert.alert("Request Declined", `You have declined ${name}.`);
+        } else {
+            Alert.alert("Error", result.error || 'Failed to decline request');
+        }
     };
 
     // --- Handlers: Activities ---
@@ -106,10 +126,10 @@ export default function ElderNotification({ navigation }: Props) {
     };
 
     const getFilteredNotifications = () => {
-        if (activeFilters.length === 0) return activities;
+        if (activeFilters.length === 0) return notifications;
 
-        return activities.filter(notif => {
-            if (activeFilters.includes('Unread') && !notif.isRead) return true;
+        return notifications.filter(notif => {
+            if (activeFilters.includes('Unread') && !notif.read) return true;
             if (activeFilters.includes('Message') && notif.type === 'message') return true;
             if (activeFilters.includes('Danger Alert') && notif.type === 'danger') return true;
             if (activeFilters.includes('Warning Alert') && notif.type === 'warning') return true;
@@ -118,26 +138,26 @@ export default function ElderNotification({ navigation }: Props) {
     };
 
     // --- Render Items ---
-    const renderCaregiverRequest = (item: CaregiverRequest) => (
+    const renderCaregiverRequest = (item: { id: string; caregiverId: string; caregiverName: string }) => (
         <View key={item.id} style={elderNotificationStyles.requestCard}>
             <View style={{flexDirection:'row', alignItems:'center'}}>
                 <View style={elderNotificationStyles.avatarPlaceholder} />
                 <View style={{marginLeft: 15}}>
-                    <Text style={elderNotificationStyles.caregiverName}>{item.name}</Text>
+                    <Text style={elderNotificationStyles.caregiverName}>{item.caregiverName}</Text>
                 </View>
             </View>
 
             <View style={elderNotificationStyles.actionButtons}>
                 <TouchableOpacity
                     style={elderNotificationStyles.iconButton}
-                    onPress={() => handleDeclineRequest(item.id, item.name)}
+                    onPress={() => handleDeclineRequest(item.id, item.caregiverName)}
                 >
                     <Ionicons name="close-outline" size={28} color="#dc2626" />
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     style={elderNotificationStyles.iconButton}
-                    onPress={() => handleAcceptRequest(item.id, item.name)}
+                    onPress={() => handleAcceptRequest(item.id, item.caregiverName)}
                 >
                     <Ionicons name="checkmark-outline" size={28} color="#16a34a" />
                 </TouchableOpacity>
@@ -145,45 +165,56 @@ export default function ElderNotification({ navigation }: Props) {
         </View>
     );
 
-    const renderActivityBadge = (notif: ActivityNotification) => (
-        <TouchableOpacity
-            key={notif.id}
-            style={[
-                elderNotificationStyles.activityBadge,
-                { backgroundColor: getNotificationColor(notif.type) }
-            ]}
-            activeOpacity={0.8}
-        >
-            {!notif.isRead && <View style={elderNotificationStyles.unreadDot} />}
+    const renderActivityBadge = (notif: Notification) => {
+        const handleTap = async () => {
+            if (!notif.read) {
+                await markNotificationAsRead(notif.id);
+            }
+        };
 
-            <View style={elderNotificationStyles.activityContent}>
-                <View style={elderNotificationStyles.activityTitleRow}>
+        return (
+            <TouchableOpacity
+                key={notif.id}
+                style={[
+                    elderNotificationStyles.activityBadge,
+                    { backgroundColor: getNotificationColor(notif.type) }
+                ]}
+                onPress={handleTap}
+                activeOpacity={0.8}
+            >
+                {!notif.read && <View style={elderNotificationStyles.unreadDot} />}
+
+                <View style={elderNotificationStyles.activityContent}>
+                    <View style={elderNotificationStyles.activityTitleRow}>
+                        <Text style={[
+                            elderNotificationStyles.activityTitle,
+                            { color: getNotificationTextColor(notif.type) }
+                        ]}>
+                            {notif.title}
+                        </Text>
+                        {notif.type !== 'message' && (
+                            <Image
+                                source={notif.type === 'danger' ? triangleIcon : diamondIcon}
+                                style={[elderNotificationStyles.alertIcon, {tintColor: getNotificationTextColor(notif.type)}]}
+                                resizeMode="contain"
+                            />
+                        )}
+                    </View>
+
                     <Text style={[
-                        elderNotificationStyles.activityTitle,
+                        elderNotificationStyles.activityMessage,
                         { color: getNotificationTextColor(notif.type) }
                     ]}>
-                        {notif.title}
+                        {notif.message}
                     </Text>
-                    {notif.type !== 'message' && (
-                        <Image
-                            source={notif.type === 'danger' ? triangleIcon : diamondIcon}
-                            style={[elderNotificationStyles.alertIcon, {tintColor: getNotificationTextColor(notif.type)}]}
-                            resizeMode="contain"
-                        />
-                    )}
                 </View>
 
-                <Text style={[
-                    elderNotificationStyles.activityMessage,
-                    { color: getNotificationTextColor(notif.type) }
-                ]}>
-                    {notif.senderName} - {notif.message}
+                <Text style={elderNotificationStyles.activityTimestamp}>
+                    {notif.timestamp.toLocaleDateString()} - {notif.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </Text>
-            </View>
-
-            <Text style={elderNotificationStyles.activityTimestamp}>{notif.timestamp}</Text>
-        </TouchableOpacity>
-    );
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <SafeAreaView style={elderNotificationStyles.container}>
@@ -284,14 +315,20 @@ export default function ElderNotification({ navigation }: Props) {
 
                 {/* Lists */}
                 <View style={elderNotificationStyles.notificationsList}>
-                    {activeTab === 'caregiver_request' ? (
+                    {loading ? (
+                        <ActivityIndicator size="large" color="#008080" style={{ marginTop: 40 }} />
+                    ) : activeTab === 'caregiver_request' ? (
                         requests.length > 0 ? (
                             requests.map(renderCaregiverRequest)
                         ) : (
                             <Text style={{textAlign: 'center', color: '#9ca3af', marginTop: 20}}>No new requests</Text>
                         )
                     ) : (
-                        getFilteredNotifications().map(renderActivityBadge)
+                        getFilteredNotifications().length > 0 ? (
+                            getFilteredNotifications().map(renderActivityBadge)
+                        ) : (
+                            <Text style={{textAlign: 'center', color: '#9ca3af', marginTop: 20}}>No activity notifications</Text>
+                        )
                     )}
                 </View>
             </ScrollView>

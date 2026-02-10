@@ -38,6 +38,10 @@ import elderEditProfile from "./pages/Main/elder/elderEditProfile";
 import CaregiverChat from "./pages/Main/caregiver/caregiverChat";
 import CaregiverElderInfo from "./pages/Main/caregiver/caregiverElderInfo";
 
+// Chat screens
+import CaregiverChatPage from "./pages/Main/caregiver/CaregiverChatPage";
+import ElderChatPage from "./pages/Main/elder/ElderChatPage";
+
 export type RootStackParamList = {
   // Authentication Stack
   Home: undefined;
@@ -72,6 +76,10 @@ export type RootStackParamList = {
   AddNewElder: undefined;
   caregiverChat: { elderId: string; elderName: string};
   caregiverElderInfo: { elderId: string };
+  
+  // Chat Screens
+  CaregiverChatPage: { elderId: string; elderName: string };
+  ElderChatPage: { caregiverId: string; caregiverName: string };
 };
 
 export type MainTabParamList = {
@@ -234,6 +242,10 @@ export default function App() {
         <Stack.Screen name="elderEditProfile" component={elderEditProfile} options={{ presentation: 'card'}}/>
         <Stack.Screen name="caregiverChat" component={CaregiverChat} options={{ presentation: 'card'}}/>
         <Stack.Screen name="caregiverElderInfo" component={CaregiverElderInfo} options={{ presentation: 'card'}}/>
+        
+        {/* Chat Screens */}
+        <Stack.Screen name="CaregiverChatPage" component={CaregiverChatPage} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="ElderChatPage" component={ElderChatPage} options={{ presentation: 'card'}}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

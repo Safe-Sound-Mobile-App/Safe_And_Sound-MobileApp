@@ -19,7 +19,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
 import auth from '@react-native-firebase/auth';
-import { getCaregiverElders, getUserProfile } from '../../../services/firestore';
+import { getCaregiverElders, getUserProfile, listenToEmergencyAlerts, resolveEmergencyAlert, EmergencyAlert } from '../../../services/firestore';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const addIcon = require('../../../../assets/icons/plus.png');
@@ -81,6 +81,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
   const [elderData, setElderData] = useState<ElderData[]>([]);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [emergencyAlerts, setEmergencyAlerts] = useState<EmergencyAlert[]>([]);
   
   // Animation values for each card
   const animationRefs = useRef<{[key: string]: Animated.Value}>({});
@@ -135,6 +136,43 @@ export default function CaregiverHomepage({ navigation }: Props) {
     };
 
     fetchElders();
+  }, []);
+
+  // Listen to emergency alerts
+  useEffect(() => {
+    const currentUser = auth().currentUser;
+    if (!currentUser) return;
+
+    const unsubscribe = listenToEmergencyAlerts(
+      currentUser.uid,
+      (alerts) => {
+        setEmergencyAlerts(alerts);
+        
+        // Show alert for new emergency
+        if (alerts.length > 0) {
+          const latestAlert = alerts[0];
+          Alert.alert(
+            '🚨 EMERGENCY ALERT!',
+            `${latestAlert.elderName} needs immediate help!`,
+            [
+              {
+                text: 'View Details',
+                onPress: () => {
+                  // Could navigate to elder's profile or call them
+                  console.log('View emergency details');
+                },
+              },
+              { text: 'OK', style: 'cancel' },
+            ]
+          );
+        }
+      },
+      (error) => {
+        console.error('Emergency alerts error:', error);
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
   
   // Initialize animation values
@@ -225,9 +263,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
 
   // Handle chat with elder
   const handleChatWithElder = (elderId: string, elderName: string) => {
-    console.log(`Opening chat with ${elderName} (ID: ${elderId})`);
-    // Navigate to chat screen
-    // navigation.navigate('Chat', { elderId, elderName });
+    navigation.navigate('CaregiverChatPage', { elderId, elderName });
   };
 
   // Handle navigate to elder information
@@ -383,6 +419,50 @@ export default function CaregiverHomepage({ navigation }: Props) {
         style={caregiverHomeStyles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
+        {/* Emergency Alert Banner */}
+        {emergencyAlerts.length > 0 && (
+          <View style={{
+            backgroundColor: '#ef4444',
+            padding: 16,
+            marginHorizontal: 16,
+            marginTop: 16,
+            marginBottom: 8,
+            borderRadius: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}>
+            <Ionicons name="warning" size={24} color="#fff" style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 4 }}>
+                🚨 EMERGENCY ALERT!
+              </Text>
+              {emergencyAlerts.map((alert) => (
+                <Text key={alert.id} style={{ color: '#fff', fontSize: 14 }}>
+                  {alert.elderName} needs immediate help!
+                </Text>
+              ))}
+            </View>
+            <TouchableOpacity
+              onPress={async () => {
+                // Resolve all alerts
+                for (const alert of emergencyAlerts) {
+                  await resolveEmergencyAlert(alert.id);
+                }
+              }}
+              style={{
+                backgroundColor: '#fff',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 8,
+              }}
+            >
+              <Text style={{ color: '#ef4444', fontWeight: '600', fontSize: 13 }}>
+                Resolve
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Your Elder Section */}
         <View style={caregiverHomeStyles.sectionHeader}>
           <Text style={caregiverHomeStyles.sectionTitle}>Your Elder</Text>

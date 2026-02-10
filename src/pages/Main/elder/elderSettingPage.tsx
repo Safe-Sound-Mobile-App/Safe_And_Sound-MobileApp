@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, Image, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { caregiverSettingStyles } from '../../../global_style/elderUseSection/elderSettingStyles';
 import GradientHeader from '../../../header/GradientHeader';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import { signOut } from '../../../services/auth';
+import auth from '@react-native-firebase/auth';
+import * as Clipboard from 'expo-clipboard';
 
 // Import icons
 const accountManageIcon = require('../../../../assets/icons/setting/account_manage.png');
@@ -45,6 +48,21 @@ const settingOptions: SettingOption[] = [
 
 export default function ElderSetting({ navigation }: Props) {
     const [signingOut, setSigningOut] = useState(false);
+    const [uid, setUid] = useState<string>('');
+
+    // Get user UID
+    useEffect(() => {
+        const currentUser = auth().currentUser;
+        if (currentUser) {
+            setUid(currentUser.uid);
+        }
+    }, []);
+
+    // Copy UID to clipboard
+    const handleCopyUid = async () => {
+        await Clipboard.setStringAsync(uid);
+        Alert.alert('Copied!', 'UID copied to clipboard');
+    };
 
     const handleSettingPress = (option: SettingOption) => {
         // TODO: Implement navigation when routes are ready
@@ -122,6 +140,41 @@ export default function ElderSetting({ navigation }: Props) {
             >
                 {/* Title */}
                 <Text style={caregiverSettingStyles.pageTitle}>Setting</Text>
+
+                {/* UID Card */}
+                <View style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: 12,
+                    padding: 16,
+                    marginHorizontal: 20,
+                    marginBottom: 16,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 8,
+                    elevation: 2,
+                }}>
+                    <Text style={{ fontSize: 12, color: '#6b7280', marginBottom: 4 }}>Your UID</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 14, color: '#111827', fontFamily: 'monospace', flex: 1 }} numberOfLines={1}>
+                            {uid || 'Loading...'}
+                        </Text>
+                        <TouchableOpacity
+                            onPress={handleCopyUid}
+                            style={{
+                                padding: 8,
+                                backgroundColor: '#f3f4f6',
+                                borderRadius: 8,
+                                marginLeft: 8,
+                            }}
+                            disabled={!uid}
+                        >
+                            <Ionicons name="copy-outline" size={20} color="#008080" />
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={{ fontSize: 11, color: '#9ca3af', marginTop: 8 }}>
+                        Share this UID with caregivers to add you
+                    </Text>
+                </View>
 
                 {/* Settings Card */}
                 <View style={caregiverSettingStyles.settingsCard}>

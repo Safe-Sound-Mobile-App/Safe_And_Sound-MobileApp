@@ -9,13 +9,17 @@ import {
   Animated,
   LayoutAnimation,
   UIManager,
-  Platform
+  Platform,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { caregiverHomeStyles, createCaregiverHomeStyles } from '../../../global_style/caregiverUseSection/caregiverHomeStyles';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
+import auth from '@react-native-firebase/auth';
+import { getCaregiverElders, getUserProfile } from '../../../services/firestore';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const addIcon = require('../../../../assets/icons/plus.png');
@@ -74,11 +78,64 @@ const mockElderData: ElderData[] = [
 type Props = NativeStackScreenProps<RootStackParamList, "CaregiverHomepage">;
 
 export default function CaregiverHomepage({ navigation }: Props) {
-  const [elderData, setElderData] = useState<ElderData[]>(mockElderData);
+  const [elderData, setElderData] = useState<ElderData[]>([]);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
   
   // Animation values for each card
   const animationRefs = useRef<{[key: string]: Animated.Value}>({});
+  
+  // Fetch elders data from Firestore
+  useEffect(() => {
+    const fetchElders = async () => {
+      try {
+        const currentUser = auth().currentUser;
+        if (!currentUser) {
+          Alert.alert('Error', 'No authenticated user found');
+          setLoading(false);
+          return;
+        }
+
+        // Get elders that this caregiver is caring for
+        const eldersResult = await getCaregiverElders(currentUser.uid);
+        
+        if (eldersResult.success && eldersResult.data) {
+          // Transform Elder data to ElderData format
+          const transformedData: ElderData[] = await Promise.all(
+            eldersResult.data.map(async (elder) => {
+              // Get user info (firstName, lastName)
+              const userResult = await getUserProfile(elder.userId);
+              const userName = userResult.success && userResult.data 
+                ? `${userResult.data.firstName} ${userResult.data.lastName}`
+                : 'Unknown';
+
+              return {
+                id: elder.userId,
+                name: userName,
+                image: require('../../../../assets/icons/elder.png'),
+                risk: elder.currentHealthStatus.risk,
+                gyroscope: elder.currentHealthStatus.gyroscope,
+                heartRate: elder.currentHealthStatus.heartRate,
+                spO2: elder.currentHealthStatus.spO2,
+              };
+            })
+          );
+
+          setElderData(transformedData);
+        } else {
+          // No elders found or error
+          setElderData([]);
+        }
+      } catch (error) {
+        console.error('Error fetching elders:', error);
+        Alert.alert('Error', 'Failed to load elder data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchElders();
+  }, []);
   
   // Initialize animation values
   useEffect(() => {
@@ -350,10 +407,35 @@ export default function CaregiverHomepage({ navigation }: Props) {
           </Text>
         </View>
 
+        {/* Loading State */}
+        {loading && (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#008080" />
+            <Text style={{ marginTop: 12, color: '#6b7280', fontSize: 14 }}>
+              Loading elders...
+            </Text>
+          </View>
+        )}
+
+        {/* Empty State */}
+        {!loading && elderData.length === 0 && (
+          <View style={{ padding: 40, alignItems: 'center' }}>
+            <Ionicons name="people-outline" size={64} color="#d1d5db" />
+            <Text style={{ marginTop: 16, color: '#6b7280', fontSize: 16, fontWeight: '600' }}>
+              No elders yet
+            </Text>
+            <Text style={{ marginTop: 8, color: '#9ca3af', fontSize: 14, textAlign: 'center' }}>
+              Add an elder to start monitoring their health
+            </Text>
+          </View>
+        )}
+
         {/* Elder Cards */}
-        <View style={caregiverHomeStyles.cardsContainer}>
-          {elderData.map((elder, index) => renderElderCard(elder, index))}
-        </View>
+        {!loading && elderData.length > 0 && (
+          <View style={caregiverHomeStyles.cardsContainer}>
+            {elderData.map((elder, index) => renderElderCard(elder, index))}
+          </View>
+        )}
       </ScrollView>
 
     </SafeAreaView>

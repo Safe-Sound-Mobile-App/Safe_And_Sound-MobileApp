@@ -756,3 +756,45 @@ export const getCaregiverElders = async (
     };
   }
 };
+
+/**
+ * Get all caregivers for an elder
+ */
+export const getElderCaregivers = async (
+  elderId: string
+): Promise<ServiceResult<Caregiver[]>> => {
+  try {
+    // Get relationships
+    const relationshipsSnapshot = await firestore()
+      .collection('relationships')
+      .where('elderId', '==', elderId)
+      .where('status', '==', 'active')
+      .get();
+
+    const caregiverIds = relationshipsSnapshot.docs.map((doc) => doc.data().caregiverId);
+
+    if (caregiverIds.length === 0) {
+      return { success: true, data: [] };
+    }
+
+    // Get caregivers data
+    const caregiversPromises = caregiverIds.map((caregiverId) =>
+      firestore().collection('caregivers').doc(caregiverId).get()
+    );
+
+    const caregiversSnapshots = await Promise.all(caregiversPromises);
+    const caregivers = caregiversSnapshots
+      .filter((doc) => doc.exists)
+      .map((doc) => doc.data() as Caregiver);
+
+    return {
+      success: true,
+      data: caregivers,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to get elder caregivers',
+    };
+  }
+};

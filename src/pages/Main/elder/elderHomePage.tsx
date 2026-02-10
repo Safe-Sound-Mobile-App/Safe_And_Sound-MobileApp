@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -6,11 +6,16 @@ import {
     SafeAreaView,
     Image,
     ScrollView,
+    ActivityIndicator,
+    Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
 import { elderHomeStyles as styles } from "../../../global_style/elderUseSection/elderHomeStyles";
+import auth from '@react-native-firebase/auth';
+import { getElderCaregivers, getUserProfile } from '../../../services/firestore';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const defaultAvatar = require('../../../../assets/icons/elder.png');
@@ -31,7 +36,60 @@ const mockCaregiverData: CaregiverData[] = [
 type Props = NativeStackScreenProps<RootStackParamList, "ElderHomepage">;
 
 export default function ElderHomepage({ navigation }: Props) {
-    const [caregivers, setCaregivers] = useState<CaregiverData[]>(mockCaregiverData);
+    const [caregivers, setCaregivers] = useState<CaregiverData[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    // Fetch caregivers data from Firestore
+    useEffect(() => {
+        const fetchCaregivers = async () => {
+            try {
+                const currentUser = auth().currentUser;
+                if (!currentUser) {
+                    Alert.alert('Error', 'No authenticated user found');
+                    setLoading(false);
+                    return;
+                }
+
+                // Get caregivers for this elder
+                const caregiversResult = await getElderCaregivers(currentUser.uid);
+
+                if (caregiversResult.success && caregiversResult.data) {
+                    // Transform Caregiver data to CaregiverData format
+                    const transformedData: CaregiverData[] = await Promise.all(
+                        caregiversResult.data.map(async (caregiver) => {
+                            // Get user info (firstName, lastName, status)
+                            const userResult = await getUserProfile(caregiver.userId);
+                            const userName = userResult.success && userResult.data
+                                ? `${userResult.data.firstName} ${userResult.data.lastName}`
+                                : 'Unknown';
+                            const status = userResult.success && userResult.data
+                                ? userResult.data.status
+                                : 'offline';
+
+                            return {
+                                id: caregiver.userId,
+                                name: userName,
+                                image: defaultAvatar,
+                                status: status,
+                            };
+                        })
+                    );
+
+                    setCaregivers(transformedData);
+                } else {
+                    // No caregivers found or error
+                    setCaregivers([]);
+                }
+            } catch (error) {
+                console.error('Error fetching caregivers:', error);
+                Alert.alert('Error', 'Failed to load caregiver data');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchCaregivers();
+    }, []);
 
     const handleChat = (id: string, name: string) => {
         console.log(`Chat with ${name}`);
@@ -39,6 +97,7 @@ export default function ElderHomepage({ navigation }: Props) {
 
     const handleEmergency = () => {
         console.warn('EMERGENCY PRESSED');
+        Alert.alert('Emergency', 'Emergency alert sent to all caregivers!');
     };
 
     const getStatusColor = (status: string) => {
@@ -96,10 +155,35 @@ export default function ElderHomepage({ navigation }: Props) {
                     <Text style={styles.countText}>{caregivers.length}/5</Text>
                 </View>
 
+                {/* Loading State */}
+                {loading && (
+                    <View style={{ padding: 40, alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color="#008080" />
+                        <Text style={{ marginTop: 12, color: '#6b7280', fontSize: 14 }}>
+                            Loading caregivers...
+                        </Text>
+                    </View>
+                )}
+
+                {/* Empty State */}
+                {!loading && caregivers.length === 0 && (
+                    <View style={{ padding: 40, alignItems: 'center' }}>
+                        <Ionicons name="people-outline" size={64} color="#d1d5db" />
+                        <Text style={{ marginTop: 16, color: '#6b7280', fontSize: 16, fontWeight: '600' }}>
+                            No caregivers yet
+                        </Text>
+                        <Text style={{ marginTop: 8, color: '#9ca3af', fontSize: 14, textAlign: 'center' }}>
+                            Ask a caregiver to add you to their care list
+                        </Text>
+                    </View>
+                )}
+
                 {/* List of Caregivers */}
-                <View style={styles.listContainer}>
-                    {caregivers.map(renderCaregiverCard)}
-                </View>
+                {!loading && caregivers.length > 0 && (
+                    <View style={styles.listContainer}>
+                        {caregivers.map(renderCaregiverCard)}
+                    </View>
+                )}
             </ScrollView>
 
             {/* Emergency Button - Placed Outside ScrollView to float at bottom */}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { profileStyles } from '../../../global_style/elderUseSection/elderProfileStyles';
 import GradientHeader from '../../../header/GradientHeader';
 import type { CompositeNavigationProp } from '@react-navigation/native';
@@ -10,6 +11,7 @@ import type { RootStackParamList, MainTabParamList } from "../../../App";
 import {elderHomeStyles as styles} from "../../../global_style/elderUseSection/elderHomeStyles";
 import auth from '@react-native-firebase/auth';
 import { getUserProfile, getElderCaregivers, sendEmergencyAlert } from '../../../services/firestore';
+import * as Clipboard from 'expo-clipboard';
 
 // Import icons
 const accountIcon = require('../../../../assets/icons/profile/account.png');
@@ -120,6 +122,14 @@ export default function ElderProfile({ navigation }: Props) {
     // Handle edit profile
     const handleEditProfile = () => {
         navigation.navigate('elderEditProfile' as any, { profile });
+    };
+
+    // Copy UID to clipboard
+    const handleCopyUid = async () => {
+        if (profile?.uid) {
+            await Clipboard.setStringAsync(profile.uid);
+            Alert.alert('Copied!', 'UID copied to clipboard');
+        }
     };
 
     // Handle emergency
@@ -260,7 +270,35 @@ export default function ElderProfile({ navigation }: Props) {
                     <Text style={profileStyles.fullName}>
                         {profile.firstName} {profile.lastName}
                     </Text>
-                    <Text style={profileStyles.uid}>UID: {profile.uid}</Text>
+
+                    {/* UID Card */}
+                    <View style={{
+                        backgroundColor: '#f9fafb',
+                        borderRadius: 12,
+                        padding: 14,
+                        marginTop: 12,
+                        marginBottom: 8,
+                        borderWidth: 1,
+                        borderColor: '#e5e7eb',
+                    }}>
+                        <Text style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontWeight: '500' }}>Your UID</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Text style={{ fontSize: 13, color: '#111827', fontFamily: 'monospace', flex: 1 }} numberOfLines={1}>
+                                {profile.uid}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={handleCopyUid}
+                                style={{
+                                    padding: 8,
+                                    backgroundColor: '#008080',
+                                    borderRadius: 8,
+                                    marginLeft: 8,
+                                }}
+                            >
+                                <Ionicons name="copy-outline" size={16} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
 
                     {/* Info Items */}
                     <View style={profileStyles.infoList}>

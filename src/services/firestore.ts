@@ -805,18 +805,46 @@ export const searchElderByUid = async (
 
     // Get elder profile
     const elderDoc = await firestore().collection('elders').doc(uid).get();
+    
+    // If elder profile doesn't exist, create a default one
+    let elderData: Elder;
     if (!elderDoc.exists) {
-      return {
-        success: false,
-        error: 'Elder profile not found',
+      // Create default elder profile
+      elderData = {
+        userId: uid,
+        height: 0,
+        weight: 0,
+        age: 0,
+        medicalHistory: '',
+        bloodType: null,
+        allergies: null,
+        medications: null,
+        emergencyContactName: null,
+        emergencyContactTel: null,
+        emergencyContactRelation: null,
+        currentHealthStatus: {
+          risk: 'Normal',
+          heartRate: 70,
+          spO2: 98,
+          gyroscope: 'Normal',
+          lastUpdated: firestore.FieldValue.serverTimestamp() as FirebaseFirestoreTypes.Timestamp,
+        },
+        currentLocation: null,
+        createdAt: firestore.FieldValue.serverTimestamp() as FirebaseFirestoreTypes.Timestamp,
+        updatedAt: firestore.FieldValue.serverTimestamp() as FirebaseFirestoreTypes.Timestamp,
       };
+      
+      // Save the default profile
+      await firestore().collection('elders').doc(uid).set(elderData);
+    } else {
+      elderData = elderDoc.data() as Elder;
     }
 
     return {
       success: true,
       data: {
         user: userResult.data,
-        elder: elderDoc.data() as Elder,
+        elder: elderData,
       },
     };
   } catch (error: any) {

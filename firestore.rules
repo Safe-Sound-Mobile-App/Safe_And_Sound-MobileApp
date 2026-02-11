@@ -2,6 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Helper functions
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -15,23 +16,27 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/relationships/$(elderId + '_' + caregiverId));
     }
     
+    // ✅ Users collection - ให้ authenticated users อ่านได้
     match /users/{userId} {
-      allow read: if isOwner(userId);
+      allow read: if isAuthenticated();  // ✅ เปลี่ยนจาก isOwner(userId)
       allow create: if isOwner(userId);
       allow update: if isOwner(userId);
       allow delete: if false;
     }
     
+    // ✅ Elders collection - ให้ authenticated users อ่านได้
     match /elders/{userId} {
-      allow read, write: if isOwner(userId);
-      allow read: if isAuthenticated() && hasActiveRelationship(request.auth.uid, userId);
+      allow read: if isAuthenticated();  // ✅ เพิ่มบรรทัดนี้
+      allow write: if isOwner(userId);
     }
     
+    // Caregivers collection
     match /caregivers/{userId} {
       allow read, write: if isOwner(userId);
       allow read: if isAuthenticated() && hasActiveRelationship(userId, request.auth.uid);
     }
     
+    // Relationships collection
     match /relationships/{relationshipId} {
       allow read: if isAuthenticated() && (
         resource.data.caregiverId == request.auth.uid ||
@@ -44,16 +49,19 @@ service cloud.firestore {
       );
     }
     
+    // Health Data collection
     match /healthData/{elderId}/{document=**} {
       allow read: if isOwner(elderId) || hasActiveRelationship(request.auth.uid, elderId);
       allow write: if isOwner(elderId);
     }
     
+    // Locations collection
     match /locations/{elderId}/{document=**} {
       allow read: if isOwner(elderId) || hasActiveRelationship(request.auth.uid, elderId);
       allow write: if isOwner(elderId);
     }
     
+    // Chats collection
     match /chats/{chatId} {
       allow read: if isAuthenticated() && (
         resource.data.participants.caregiverId == request.auth.uid ||
@@ -65,6 +73,7 @@ service cloud.firestore {
         resource.data.participants.elderId == request.auth.uid
       );
       
+      // Chat messages subcollection
       match /messages/{messageId} {
         allow read: if isAuthenticated() && (
           get(/databases/$(database)/documents/chats/$(chatId)).data.participants.caregiverId == request.auth.uid ||
@@ -75,12 +84,14 @@ service cloud.firestore {
       }
     }
     
+    // Notifications collection
     match /notifications/{notificationId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated();
     }
     
+    // Emergency Alerts collection
     match /emergencyAlerts/{alertId} {
       allow read: if isAuthenticated() && (
         resource.data.elderId == request.auth.uid ||
@@ -93,6 +104,7 @@ service cloud.firestore {
       );
     }
     
+    // Settings collection
     match /settings/{userId} {
       allow read, write: if isOwner(userId);
     }

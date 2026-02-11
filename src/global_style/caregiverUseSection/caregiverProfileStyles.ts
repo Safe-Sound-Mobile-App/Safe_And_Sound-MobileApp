@@ -15,10 +15,11 @@ export const profileStyles = StyleSheet.create({
   backgroundContainer: {
     position: 'relative',
     marginBottom: 80,
+    marginTop: -20, // ลบช่องว่างระหว่าง header กับ background
   },
   backgroundImageWrapper: {
     width: '100%',
-    height: 200,
+    height: 140, // ลดจาก 200 → 140
     backgroundColor: '#e5e7eb',
     position: 'relative',
   },

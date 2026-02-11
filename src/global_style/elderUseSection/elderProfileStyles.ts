@@ -15,7 +15,7 @@ export const profileStyles = StyleSheet.create({
     backgroundContainer: {
         position: 'relative',
         marginBottom: 80,
-        marginTop: -20, // ลบช่องว่างระหว่าง header กับ background
+        marginTop: -30, // เพิ่มจาก -20 → -30 เพื่อลบช่องว่าง
     },
     backgroundImageWrapper: {
         width: '100%',

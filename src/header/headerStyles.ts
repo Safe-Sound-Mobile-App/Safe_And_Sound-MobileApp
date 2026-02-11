@@ -25,7 +25,7 @@ export const headerStyles = StyleSheet.create({
     elevation: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10
+    marginBottom: 0  // ลดจาก 10 → 0 เพื่อลบช่องว่าง
   },
   appTitle: {
     // fontSize: baseFontSizes.appTitle, // Will be scaled by context

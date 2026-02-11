@@ -104,16 +104,21 @@ export default function CaregiverHomepage({ navigation }: Props) {
           // Transform Elder data to ElderData format
           const transformedData: ElderData[] = await Promise.all(
             eldersResult.data.map(async (elder) => {
-              // Get user info (firstName, lastName)
+              // Get user info (firstName, lastName, photoURL)
               const userResult = await getUserProfile(elder.userId);
               const userName = userResult.success && userResult.data 
                 ? `${userResult.data.firstName} ${userResult.data.lastName}`
                 : 'Unknown';
+              
+              // Use photoURL if available, otherwise use default icon
+              const profileImage = userResult.success && userResult.data?.photoURL
+                ? { uri: userResult.data.photoURL }
+                : require('../../../../assets/icons/elder.png');
 
               return {
                 id: elder.userId,
                 name: userName,
-                image: require('../../../../assets/icons/elder.png'),
+                image: profileImage,
                 risk: elder.currentHealthStatus.risk,
                 gyroscope: elder.currentHealthStatus.gyroscope,
                 heartRate: elder.currentHealthStatus.heartRate,

@@ -34,7 +34,7 @@ export const profileStyles = StyleSheet.create({
   },
   backgroundCameraButton: {
     position: 'absolute',
-    top: 25,  // เพิ่มจาก 15 → 25 เพื่อไม่ให้ชนกับ status bar
+    top: 40,  // เพิ่มจาก 25 → 40 เพื่อไม่โดนบัง
     right: 15,
     width: 40,
     height: 40,

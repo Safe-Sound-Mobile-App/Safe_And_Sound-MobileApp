@@ -9,8 +9,9 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList, MainTabParamList } from "../../../App";
 import auth from '@react-native-firebase/auth';
-import { getUserProfile, getCaregiverElders } from '../../../services/firestore';
+import { getUserProfile, getCaregiverElders, updateProfileImage, updateBackgroundImage } from '../../../services/firestore';
 import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 
 // Import icons
 const accountIcon = require('../../../../assets/icons/profile/account.png');
@@ -63,9 +64,14 @@ export default function CaregiverProfile({ navigation }: Props) {
           return;
         }
 
-        // Fetch elder count
+        // Fetch elder count and caregiver data
         const eldersResult = await getCaregiverElders(currentUser.uid);
         const elderCount = eldersResult.success && eldersResult.data ? eldersResult.data.length : 0;
+
+        // Fetch caregiver background image from Firestore
+        const caregiverDoc = await import('@react-native-firebase/firestore')
+          .then(f => f.default().collection('caregivers').doc(currentUser.uid).get());
+        const backgroundImageURL = caregiverDoc.data()?.backgroundImageURL || null;
 
         setProfile({
           firstName: userResult.data.firstName,
@@ -75,8 +81,8 @@ export default function CaregiverProfile({ navigation }: Props) {
           tel: userResult.data.tel || 'N/A',
           elderCount: elderCount,
           maxElders: 5,
-          profileImage: null,
-          backgroundImage: null,
+          profileImage: userResult.data.photoURL ? { uri: userResult.data.photoURL } : null,
+          backgroundImage: backgroundImageURL ? { uri: backgroundImageURL } : null,
         });
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -90,32 +96,97 @@ export default function CaregiverProfile({ navigation }: Props) {
   }, []);
 
   // Handle profile image upload
-  const handleProfileImageUpload = () => {
-    Alert.alert(
-      'Change Profile Picture',
-      'Choose an option',
-      [
-        { text: 'Take Photo', onPress: () => console.log('Take photo') },
-        { text: 'Choose from Gallery', onPress: () => console.log('Choose from gallery') },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
-    // TODO: Implement image picker
-    // const result = await ImagePicker.launchImageLibraryAsync({...});
+  const handleProfileImageUpload = async () => {
+    try {
+      // Request permission
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photos');
+        return;
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets[0]) {
+        return;
+      }
+
+      const currentUser = auth().currentUser;
+      if (!currentUser) return;
+
+      // Show loading
+      Alert.alert('Uploading...', 'Please wait');
+
+      // Upload image
+      const uploadResult = await updateProfileImage(currentUser.uid, result.assets[0].uri);
+
+      if (uploadResult.success && uploadResult.data) {
+        // Update local state
+        setProfile(prev => prev ? {
+          ...prev,
+          profileImage: { uri: uploadResult.data }
+        } : null);
+        Alert.alert('Success', 'Profile image updated!');
+      } else {
+        Alert.alert('Error', uploadResult.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    }
   };
 
   // Handle background image upload
-  const handleBackgroundImageUpload = () => {
-    Alert.alert(
-      'Change Background Picture',
-      'Choose an option',
-      [
-        { text: 'Take Photo', onPress: () => console.log('Take photo') },
-        { text: 'Choose from Gallery', onPress: () => console.log('Choose from gallery') },
-        { text: 'Cancel', style: 'cancel' }
-      ]
-    );
-    // TODO: Implement image picker
+  const handleBackgroundImageUpload = async () => {
+    try {
+      // Request permission
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Please allow access to your photos');
+        return;
+      }
+
+      // Pick image
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.8,
+      });
+
+      if (result.canceled || !result.assets[0]) {
+        return;
+      }
+
+      const currentUser = auth().currentUser;
+      if (!currentUser) return;
+
+      // Show loading
+      Alert.alert('Uploading...', 'Please wait');
+
+      // Upload image
+      const uploadResult = await updateBackgroundImage(currentUser.uid, 'caregiver', result.assets[0].uri);
+
+      if (uploadResult.success && uploadResult.data) {
+        // Update local state
+        setProfile(prev => prev ? {
+          ...prev,
+          backgroundImage: { uri: uploadResult.data }
+        } : null);
+        Alert.alert('Success', 'Background image updated!');
+      } else {
+        Alert.alert('Error', uploadResult.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Error uploading background image:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    }
   };
 
   // Handle edit profile

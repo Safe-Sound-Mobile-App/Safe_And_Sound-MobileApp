@@ -1,4 +1,5 @@
 import firestore from '@react-native-firebase/firestore';
+import storage from '@react-native-firebase/storage';
 import { auth } from '../config/firebase';
 import type { FirebaseFirestoreTypes } from '@react-native-firebase/firestore';
 
@@ -32,6 +33,7 @@ export interface Elder {
   emergencyContactName: string | null;
   emergencyContactTel: string | null;
   emergencyContactRelation: string | null;
+  backgroundImageURL: string | null;
   currentHealthStatus: {
     risk: 'Normal' | 'Warning' | 'Danger';
     heartRate: number;
@@ -55,6 +57,7 @@ export interface Caregiver {
   experience: number | null;
   certification: string[] | null;
   totalEldersCared: number;
+  backgroundImageURL: string | null;
   createdAt: FirebaseFirestoreTypes.Timestamp;
   updatedAt: FirebaseFirestoreTypes.Timestamp;
 }
@@ -1246,6 +1249,101 @@ export const respondToCaregiverRequest = async (
     return {
       success: false,
       error: error.message || 'Failed to respond to caregiver request',
+    };
+  }
+};
+
+// ========== Image Upload Functions ==========
+
+/**
+ * Upload image to Firebase Storage
+ * @param uri - Local image URI
+ * @param path - Storage path (e.g., 'users/uid/profile.jpg')
+ * @returns Download URL
+ */
+export const uploadImage = async (
+  uri: string,
+  path: string
+): Promise<ServiceResult<string>> => {
+  try {
+    const reference = storage().ref(path);
+    await reference.putFile(uri);
+    const downloadURL = await reference.getDownloadURL();
+    return { success: true, data: downloadURL };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to upload image',
+    };
+  }
+};
+
+/**
+ * Update user profile image
+ * @param userId - User ID
+ * @param imageUri - Local image URI
+ */
+export const updateProfileImage = async (
+  userId: string,
+  imageUri: string
+): Promise<ServiceResult<string>> => {
+  try {
+    const path = `users/${userId}/profile.jpg`;
+    const uploadResult = await uploadImage(imageUri, path);
+    
+    if (!uploadResult.success || !uploadResult.data) {
+      return uploadResult;
+    }
+
+    const photoURL = uploadResult.data;
+
+    // Update in users collection
+    await firestore().collection('users').doc(userId).update({
+      photoURL,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, data: photoURL };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to update profile image',
+    };
+  }
+};
+
+/**
+ * Update background image for elder or caregiver profile
+ * @param userId - User ID
+ * @param role - User role ('elder' or 'caregiver')
+ * @param imageUri - Local image URI
+ */
+export const updateBackgroundImage = async (
+  userId: string,
+  role: 'elder' | 'caregiver',
+  imageUri: string
+): Promise<ServiceResult<string>> => {
+  try {
+    const path = `${role}s/${userId}/background.jpg`;
+    const uploadResult = await uploadImage(imageUri, path);
+    
+    if (!uploadResult.success || !uploadResult.data) {
+      return uploadResult;
+    }
+
+    const backgroundImageURL = uploadResult.data;
+
+    // Update in elders or caregivers collection
+    await firestore().collection(`${role}s`).doc(userId).update({
+      backgroundImageURL,
+      updatedAt: firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true, data: backgroundImageURL };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to update background image',
     };
   }
 };

@@ -66,7 +66,7 @@ export default function ElderHomepage({ navigation }: Props) {
                     // Transform Caregiver data to CaregiverData format
                     const transformedData: CaregiverData[] = await Promise.all(
                         caregiversResult.data.map(async (caregiver) => {
-                            // Get user info (firstName, lastName, status)
+                            // Get user info (firstName, lastName, status, photoURL)
                             const userResult = await getUserProfile(caregiver.userId);
                             const userName = userResult.success && userResult.data
                                 ? `${userResult.data.firstName} ${userResult.data.lastName}`
@@ -74,11 +74,16 @@ export default function ElderHomepage({ navigation }: Props) {
                             const status = userResult.success && userResult.data
                                 ? userResult.data.status
                                 : 'offline';
+                            
+                            // Use photoURL if available, otherwise use default avatar
+                            const profileImage = userResult.success && userResult.data?.photoURL
+                                ? { uri: userResult.data.photoURL }
+                                : defaultAvatar;
 
                             return {
                                 id: caregiver.userId,
                                 name: userName,
-                                image: defaultAvatar,
+                                image: profileImage,
                                 status: status,
                             };
                         })

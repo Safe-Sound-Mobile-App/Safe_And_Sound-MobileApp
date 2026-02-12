@@ -20,6 +20,10 @@ interface SettingOption {
     icon: any;
 }
 
+// Import additional icons
+const helpIcon = require('../../../../assets/icons/help.png');
+const infoIcon = require('../../../../assets/icons/navbar/notification.png'); // Placeholder
+
 const settingOptions: SettingOption[] = [
     {
         id: '1',
@@ -41,15 +45,44 @@ const settingOptions: SettingOption[] = [
         title: 'Notification',
         icon: notificationIcon,
     },
+    {
+        id: '5',
+        title: 'Help & Support',
+        icon: helpIcon,
+    },
+    {
+        id: '6',
+        title: 'About',
+        icon: infoIcon,
+    },
 ];
 
 export default function ElderSetting({ navigation }: Props) {
     const [signingOut, setSigningOut] = useState(false);
 
     const handleSettingPress = (option: SettingOption) => {
-        // TODO: Implement navigation when routes are ready
-        console.log(`Clicked: ${option.title}`);
-        alert(`${option.title} feature coming soon!`);
+        switch (option.id) {
+            case '1':
+                navigation.navigate('ElderAccountManage');
+                break;
+            case '2':
+                navigation.navigate('Privacy');
+                break;
+            case '3':
+                navigation.navigate('Accessibility');
+                break;
+            case '4':
+                navigation.navigate('NotificationSettings');
+                break;
+            case '5':
+                navigation.navigate('HelpSupport');
+                break;
+            case '6':
+                navigation.navigate('About');
+                break;
+            default:
+                console.log(`Clicked: ${option.title}`);
+        }
     };
 
     const handleSignOut = () => {

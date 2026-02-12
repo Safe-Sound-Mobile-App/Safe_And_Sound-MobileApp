@@ -42,6 +42,15 @@ import CaregiverElderInfo from "./pages/Main/caregiver/caregiverElderInfo";
 import CaregiverChatPage from "./pages/Main/caregiver/CaregiverChatPage";
 import ElderChatPage from "./pages/Main/elder/ElderChatPage";
 
+// Settings screens
+import CaregiverAccountManagePage from "./pages/Settings/CaregiverAccountManagePage";
+import ElderAccountManagePage from "./pages/Settings/ElderAccountManagePage";
+import NotificationSettingsPage from "./pages/Settings/NotificationSettingsPage";
+import AccessibilityPage from "./pages/Settings/AccessibilityPage";
+import PrivacyPage from "./pages/Settings/PrivacyPage";
+import HelpSupportPage from "./pages/Settings/HelpSupportPage";
+import AboutPage from "./pages/Settings/AboutPage";
+
 export type RootStackParamList = {
   // Authentication Stack
   Home: undefined;
@@ -80,6 +89,15 @@ export type RootStackParamList = {
   // Chat Screens
   CaregiverChatPage: { elderId: string; elderName: string };
   ElderChatPage: { caregiverId: string; caregiverName: string };
+  
+  // Settings Screens
+  CaregiverAccountManage: undefined;
+  ElderAccountManage: undefined;
+  NotificationSettings: undefined;
+  Accessibility: undefined;
+  Privacy: undefined;
+  HelpSupport: undefined;
+  About: undefined;
 };
 
 export type MainTabParamList = {
@@ -246,6 +264,15 @@ export default function App() {
         {/* Chat Screens */}
         <Stack.Screen name="CaregiverChatPage" component={CaregiverChatPage} options={{ presentation: 'card'}}/>
         <Stack.Screen name="ElderChatPage" component={ElderChatPage} options={{ presentation: 'card'}}/>
+        
+        {/* Settings Screens */}
+        <Stack.Screen name="CaregiverAccountManage" component={CaregiverAccountManagePage} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="ElderAccountManage" component={ElderAccountManagePage} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="NotificationSettings" component={NotificationSettingsPage} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="Accessibility" component={AccessibilityPage} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="Privacy" component={PrivacyPage} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="HelpSupport" component={HelpSupportPage} options={{ presentation: 'card'}}/>
+        <Stack.Screen name="About" component={AboutPage} options={{ presentation: 'card'}}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

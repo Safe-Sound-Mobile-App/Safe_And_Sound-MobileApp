@@ -1136,6 +1136,18 @@ export interface Notification {
   read: boolean;
 }
 
+export interface NotificationPreferences {
+  userId: string;
+  emergencyAlerts: boolean;
+  healthChanges: boolean;
+  chatMessages: boolean;
+  relationshipRequests: boolean;
+  quietHoursEnabled: boolean;
+  quietHoursStart?: string; // e.g., "22:00"
+  quietHoursEnd?: string; // e.g., "07:00"
+  updatedAt: FirebaseFirestoreTypes.Timestamp;
+}
+
 /**
  * Listen to notifications for a user
  */
@@ -1407,6 +1419,80 @@ export const deleteRelationship = async (
     return {
       success: false,
       error: error.message || 'Failed to delete relationship',
+    };
+  }
+};
+
+// ========== Notification Preferences ==========
+
+/**
+ * Get notification preferences for a user
+ * @param userId - User ID
+ * @returns Notification preferences or default values
+ */
+export const getNotificationPreferences = async (
+  userId: string
+): Promise<ServiceResult<NotificationPreferences>> => {
+  try {
+    const doc = await firestore()
+      .collection('notificationPreferences')
+      .doc(userId)
+      .get();
+
+    if (doc.exists) {
+      return {
+        success: true,
+        data: doc.data() as NotificationPreferences,
+      };
+    }
+
+    // Return default preferences
+    const defaultPreferences: NotificationPreferences = {
+      userId,
+      emergencyAlerts: true,
+      healthChanges: true,
+      chatMessages: true,
+      relationshipRequests: true,
+      quietHoursEnabled: false,
+      quietHoursStart: '22:00',
+      quietHoursEnd: '07:00',
+      updatedAt: firestore.Timestamp.now(),
+    };
+
+    return { success: true, data: defaultPreferences };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to get notification preferences',
+    };
+  }
+};
+
+/**
+ * Save notification preferences for a user
+ * @param preferences - Notification preferences
+ * @returns Success result
+ */
+export const saveNotificationPreferences = async (
+  preferences: Partial<NotificationPreferences> & { userId: string }
+): Promise<ServiceResult<void>> => {
+  try {
+    await firestore()
+      .collection('notificationPreferences')
+      .doc(preferences.userId)
+      .set(
+        {
+          ...preferences,
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to save notification preferences',
     };
   }
 };

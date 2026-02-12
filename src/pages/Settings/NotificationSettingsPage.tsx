@@ -1,18 +1,81 @@
-import React, { useState } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Switch, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GradientHeader from '../../header/GradientHeader';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../App";
 import { caregiverSettingStyles } from '../../global_style/caregiverUseSection/caregiverSettingStyles';
+import auth from '@react-native-firebase/auth';
+import { getNotificationPreferences, saveNotificationPreferences } from '../../services/firestore';
 
 type Props = NativeStackScreenProps<RootStackParamList, "NotificationSettings">;
 
 export default function NotificationSettingsPage({ navigation }: Props) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [emergencyAlerts, setEmergencyAlerts] = useState(true);
   const [healthChanges, setHealthChanges] = useState(true);
   const [chatMessages, setChatMessages] = useState(true);
   const [relationshipRequests, setRelationshipRequests] = useState(true);
+
+  useEffect(() => {
+    loadPreferences();
+  }, []);
+
+  const loadPreferences = async () => {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) return;
+
+      const result = await getNotificationPreferences(currentUser.uid);
+      if (result.success && result.data) {
+        setEmergencyAlerts(result.data.emergencyAlerts);
+        setHealthChanges(result.data.healthChanges);
+        setChatMessages(result.data.chatMessages);
+        setRelationshipRequests(result.data.relationshipRequests);
+      }
+    } catch (error) {
+      console.error('Error loading preferences:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSavePreferences = async () => {
+    try {
+      setSaving(true);
+      const currentUser = auth().currentUser;
+      if (!currentUser) return;
+
+      const result = await saveNotificationPreferences({
+        userId: currentUser.uid,
+        emergencyAlerts,
+        healthChanges,
+        chatMessages,
+        relationshipRequests,
+      });
+
+      if (result.success) {
+        Alert.alert('Success', 'Notification preferences saved!');
+      } else {
+        Alert.alert('Error', result.error || 'Failed to save preferences');
+      }
+    } catch (error) {
+      console.error('Error saving preferences:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (
+    setter: (value: boolean) => void,
+    currentValue: boolean
+  ) => {
+    setter(!currentValue);
+    // Auto-save after toggle
+    setTimeout(() => handleSavePreferences(), 500);
+  };
 
   const renderToggleItem = (
     title: string,
@@ -52,49 +115,58 @@ export default function NotificationSettingsPage({ navigation }: Props) {
       </View>
 
       <ScrollView style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Alert Notifications</Text>
-          
-          {renderToggleItem(
-            'Emergency Alerts',
-            'Get notified when an elder sends SOS',
-            emergencyAlerts,
-            setEmergencyAlerts,
-            true // Cannot disable
-          )}
-          
-          {renderToggleItem(
-            'Health Status Changes',
-            'Notified when health risk changes',
-            healthChanges,
-            setHealthChanges
-          )}
-        </View>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#008080" />
+            <Text style={styles.loadingText}>Loading preferences...</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Alert Notifications</Text>
+              
+              {renderToggleItem(
+                'Emergency Alerts',
+                'Get notified when an elder sends SOS',
+                emergencyAlerts,
+                (value) => handleToggle(setEmergencyAlerts, emergencyAlerts),
+                true // Cannot disable
+              )}
+              
+              {renderToggleItem(
+                'Health Status Changes',
+                'Notified when health risk changes',
+                healthChanges,
+                (value) => handleToggle(setHealthChanges, healthChanges)
+              )}
+            </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Communication</Text>
-          
-          {renderToggleItem(
-            'Chat Messages',
-            'Get notified for new messages',
-            chatMessages,
-            setChatMessages
-          )}
-          
-          {renderToggleItem(
-            'Relationship Requests',
-            'Notified for new caregiver requests',
-            relationshipRequests,
-            setRelationshipRequests
-          )}
-        </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Communication</Text>
+              
+              {renderToggleItem(
+                'Chat Messages',
+                'Get notified for new messages',
+                chatMessages,
+                (value) => handleToggle(setChatMessages, chatMessages)
+              )}
+              
+              {renderToggleItem(
+                'Relationship Requests',
+                'Notified for new caregiver requests',
+                relationshipRequests,
+                (value) => handleToggle(setRelationshipRequests, relationshipRequests)
+              )}
+            </View>
 
-        <View style={styles.infoBox}>
-          <Ionicons name="information-circle" size={20} color="#3b82f6" />
-          <Text style={styles.infoText}>
-            Changes will be saved automatically. Full functionality coming in Phase 3.
-          </Text>
-        </View>
+            <View style={styles.infoBox}>
+              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+              <Text style={styles.infoText}>
+                {saving ? 'Saving...' : 'Changes are saved automatically.'}
+              </Text>
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -169,17 +241,28 @@ const styles = {
   infoBox: {
     flexDirection: 'row' as const,
     alignItems: 'flex-start' as const,
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#f0fdf4',
     padding: 16,
     margin: 20,
     borderRadius: 12,
     borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6',
+    borderLeftColor: '#10b981',
   },
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#1e40af',
+    color: '#065f46',
     marginLeft: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 12,
   },
 };

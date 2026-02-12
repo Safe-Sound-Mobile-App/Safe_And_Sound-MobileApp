@@ -11,7 +11,7 @@ import { useAccessibility } from '../../contexts/AccessibilityContext';
 type Props = NativeStackScreenProps<RootStackParamList, "Accessibility">;
 
 export default function AccessibilityPage({ navigation }: Props) {
-  const { settings, updateTextSize, updateHighContrast, updateLanguage, loading } = useAccessibility();
+  const { settings, updateTextSize, updateHighContrast, loading } = useAccessibility();
   const [localTextSize, setLocalTextSize] = useState(settings.textSize);
   const [saving, setSaving] = useState(false);
 
@@ -41,18 +41,6 @@ export default function AccessibilityPage({ navigation }: Props) {
       Alert.alert('Success', value ? 'High contrast mode enabled' : 'High contrast mode disabled');
     } catch (error) {
       Alert.alert('Error', 'Failed to update high contrast mode');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleLanguageChange = async (lang: 'th' | 'en') => {
-    try {
-      setSaving(true);
-      await updateLanguage(lang);
-      Alert.alert('Success', `Language changed to ${lang === 'th' ? 'Thai' : 'English'}`);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to change language');
     } finally {
       setSaving(false);
     }
@@ -135,33 +123,6 @@ export default function AccessibilityPage({ navigation }: Props) {
                   disabled={saving}
                 />
               </View>
-            </View>
-
-            {/* Language */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Language</Text>
-              
-              <TouchableOpacity
-                style={[styles.languageOption, settings.language === 'th' && styles.languageSelected]}
-                onPress={() => handleLanguageChange('th')}
-                disabled={saving}
-              >
-                <Text style={[styles.languageText, settings.language === 'th' && styles.languageTextSelected]}>
-                  🇹🇭 ไทย (Thai)
-                </Text>
-                {settings.language === 'th' && <Ionicons name="checkmark-circle" size={24} color="#10b981" />}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.languageOption, settings.language === 'en' && styles.languageSelected]}
-                onPress={() => handleLanguageChange('en')}
-                disabled={saving}
-              >
-                <Text style={[styles.languageText, settings.language === 'en' && styles.languageTextSelected]}>
-                  🇬🇧 English
-                </Text>
-                {settings.language === 'en' && <Ionicons name="checkmark-circle" size={24} color="#10b981" />}
-              </TouchableOpacity>
             </View>
 
             <View style={styles.infoBox}>
@@ -273,25 +234,6 @@ const styles = {
   toggleSubtitle: {
     fontSize: 14,
     color: '#6b7280',
-  },
-  languageOption: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  languageSelected: {
-    backgroundColor: '#f0fdf4',
-  },
-  languageText: {
-    fontSize: 16,
-    color: '#1f2937',
-  },
-  languageTextSelected: {
-    fontWeight: '600' as const,
-    color: '#10b981',
   },
   infoBox: {
     flexDirection: 'row' as const,

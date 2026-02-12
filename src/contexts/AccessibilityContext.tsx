@@ -4,21 +4,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 interface AccessibilitySettings {
   textSize: number;
   highContrast: boolean;
-  language: 'th' | 'en';
 }
 
 interface AccessibilityContextType {
   settings: AccessibilitySettings;
   updateTextSize: (size: number) => Promise<void>;
   updateHighContrast: (enabled: boolean) => Promise<void>;
-  updateLanguage: (lang: 'th' | 'en') => Promise<void>;
   loading: boolean;
 }
 
 const defaultSettings: AccessibilitySettings = {
   textSize: 16,
   highContrast: false,
-  language: 'th',
 };
 
 const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);
@@ -68,18 +65,12 @@ export const AccessibilityProvider = ({ children }: { children: ReactNode }) => 
     await saveSettings(newSettings);
   };
 
-  const updateLanguage = async (lang: 'th' | 'en') => {
-    const newSettings = { ...settings, language: lang };
-    await saveSettings(newSettings);
-  };
-
   return (
     <AccessibilityContext.Provider
       value={{
         settings,
         updateTextSize,
         updateHighContrast,
-        updateLanguage,
         loading,
       }}
     >

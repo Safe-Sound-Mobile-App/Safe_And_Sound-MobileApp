@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Linking, Alert, Image } from 'react-native';
+import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Linking, Alert, Image, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GradientHeader from '../../header/GradientHeader';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -7,6 +7,7 @@ import type { RootStackParamList } from "../../App";
 import { caregiverSettingStyles } from '../../global_style/caregiverUseSection/caregiverSettingStyles';
 import Constants from 'expo-constants';
 import auth from '@react-native-firebase/auth';
+import { deleteUserAccount, getUserProfile } from '../../services/firestore';
 
 type Props = NativeStackScreenProps<RootStackParamList, "About">;
 
@@ -45,15 +46,57 @@ export default function AboutPage({ navigation }: Props) {
   const confirmDeleteAccount = () => {
     Alert.alert(
       'Final Confirmation',
-      'Type your email to confirm account deletion',
+      'This will permanently delete:\n\n• Your account\n• All relationships\n• All chat history\n• All health data\n• All emergency alerts\n\nType DELETE to confirm',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'I Understand',
+          text: 'DELETE ACCOUNT',
           style: 'destructive',
           onPress: async () => {
-            // TODO: Implement actual account deletion in Phase 7
-            Alert.alert('Coming Soon', 'Account deletion will be implemented in Phase 7');
+            try {
+              setDeletingAccount(true);
+              const currentUser = auth().currentUser;
+              if (!currentUser) return;
+
+              // Get user role
+              const userResult = await getUserProfile(currentUser.uid);
+              if (!userResult.success || !userResult.data) {
+                Alert.alert('Error', 'Failed to get user profile');
+                setDeletingAccount(false);
+                return;
+              }
+
+              const userRole = userResult.data.role;
+
+              // Delete account
+              const result = await deleteUserAccount(currentUser.uid, userRole);
+
+              if (result.success) {
+                Alert.alert(
+                  'Account Deleted',
+                  'Your account has been permanently deleted.',
+                  [
+                    {
+                      text: 'OK',
+                      onPress: () => {
+                        // Navigation will be handled by auth state listener
+                        navigation.reset({
+                          index: 0,
+                          routes: [{ name: 'Home' }],
+                        });
+                      },
+                    },
+                  ]
+                );
+              } else {
+                Alert.alert('Error', result.error || 'Failed to delete account');
+                setDeletingAccount(false);
+              }
+            } catch (error) {
+              console.error('Error deleting account:', error);
+              Alert.alert('Error', 'An unexpected error occurred');
+              setDeletingAccount(false);
+            }
           },
         },
       ]
@@ -154,12 +197,18 @@ export default function AboutPage({ navigation }: Props) {
           <Text style={styles.dangerTitle}>Danger Zone</Text>
           
           <TouchableOpacity
-            style={styles.deleteButton}
+            style={[styles.deleteButton, deletingAccount && { opacity: 0.5 }]}
             onPress={handleDeleteAccount}
             disabled={deletingAccount}
           >
-            <Ionicons name="trash" size={20} color="#ef4444" />
-            <Text style={styles.deleteButtonText}>Delete Account</Text>
+            {deletingAccount ? (
+              <ActivityIndicator size="small" color="#ef4444" />
+            ) : (
+              <>
+                <Ionicons name="trash" size={20} color="#ef4444" />
+                <Text style={styles.deleteButtonText}>Delete Account</Text>
+              </>
+            )}
           </TouchableOpacity>
           
           <Text style={styles.dangerWarning}>

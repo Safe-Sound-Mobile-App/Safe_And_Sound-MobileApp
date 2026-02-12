@@ -1578,3 +1578,83 @@ export const savePrivacyPreferences = async (
     };
   }
 };
+
+// ========== Account Deletion ==========
+
+/**
+ * Delete user account and all associated data
+ * @param userId - User ID
+ * @param userRole - User role ('elder' or 'caregiver')
+ * @returns Success result
+ */
+export const deleteUserAccount = async (
+  userId: string,
+  userRole: 'elder' | 'caregiver'
+): Promise<ServiceResult<void>> => {
+  try {
+    // 1. Delete all relationships
+    const relationshipsSnapshot = await firestore()
+      .collection('relationships')
+      .where(userRole === 'elder' ? 'elderId' : 'caregiverId', '==', userId)
+      .get();
+
+    const deletePromises = relationshipsSnapshot.docs.map(doc => doc.ref.delete());
+    await Promise.all(deletePromises);
+
+    // 2. Delete notifications
+    const notificationsSnapshot = await firestore()
+      .collection('notifications')
+      .where('userId', '==', userId)
+      .get();
+    
+    await Promise.all(notificationsSnapshot.docs.map(doc => doc.ref.delete()));
+
+    // 3. Delete chats (find all chats where user is participant)
+    const chatsSnapshot = await firestore()
+      .collection('chats')
+      .where(`participants.${userRole}Id`, '==', userId)
+      .get();
+
+    for (const chatDoc of chatsSnapshot.docs) {
+      // Delete messages subcollection
+      const messagesSnapshot = await chatDoc.ref.collection('messages').get();
+      await Promise.all(messagesSnapshot.docs.map(msgDoc => msgDoc.ref.delete()));
+      
+      // Delete chat document
+      await chatDoc.ref.delete();
+    }
+
+    // 4. Delete emergency alerts (if elder)
+    if (userRole === 'elder') {
+      const alertsSnapshot = await firestore()
+        .collection('emergencyAlerts')
+        .where('elderId', '==', userId)
+        .get();
+      
+      await Promise.all(alertsSnapshot.docs.map(doc => doc.ref.delete()));
+    }
+
+    // 5. Delete preferences
+    await firestore().collection('notificationPreferences').doc(userId).delete();
+    await firestore().collection('privacyPreferences').doc(userId).delete();
+
+    // 6. Delete role-specific data
+    await firestore().collection(`${userRole}s`).doc(userId).delete();
+
+    // 7. Delete user profile
+    await firestore().collection('users').doc(userId).delete();
+
+    // 8. Delete Firebase Auth account
+    const currentUser = auth().currentUser;
+    if (currentUser && currentUser.uid === userId) {
+      await currentUser.delete();
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to delete account',
+    };
+  }
+};

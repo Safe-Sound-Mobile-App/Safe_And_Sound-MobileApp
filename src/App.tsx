@@ -7,6 +7,7 @@ import { ActivityIndicator, View } from "react-native";
 import BottomNavbar from "./navigation/BottomNavbar";
 import auth from "@react-native-firebase/auth";
 import { getUserProfile } from "./services/firestore";
+import { AccessibilityProvider } from "./contexts/AccessibilityContext";
 
 // Authentication screens (no navbar)
 import Home from "./pages/Authentication/general/HomePage";
@@ -233,47 +234,49 @@ export default function App() {
   };
 
   return (
-    <NavigationContainer linking={linking}>
-      <Stack.Navigator
-        initialRouteName={getInitialRouteName()}
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        {/* Authentication Screens - NO NAVBAR */}
-        <Stack.Screen name="Home" component={Home} />
-        <Stack.Screen name="SignIn" component={SignIn} />
-        <Stack.Screen name="SignUp" component={SignUp} />
-        <Stack.Screen name="RoleSelection" component={RoleSelection} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-        <Stack.Screen name="NewPassword" component={NewPassword} />
-        <Stack.Screen name="ElderInfoForm" component={ElderInfoForm} />
-        <Stack.Screen name="CaregiverInfoForm" component={CaregiverInfoForm} />
+    <AccessibilityProvider>
+      <NavigationContainer linking={linking}>
+        <Stack.Navigator
+          initialRouteName={getInitialRouteName()}
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
+          {/* Authentication Screens - NO NAVBAR */}
+          <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen name="SignIn" component={SignIn} />
+          <Stack.Screen name="SignUp" component={SignUp} />
+          <Stack.Screen name="RoleSelection" component={RoleSelection} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+          <Stack.Screen name="NewPassword" component={NewPassword} />
+          <Stack.Screen name="ElderInfoForm" component={ElderInfoForm} />
+          <Stack.Screen name="CaregiverInfoForm" component={CaregiverInfoForm} />
 
-        {/* Main App with Tabs - HAS NAVBAR */}
-        <Stack.Screen name="MainTabs" component={MainTabs} />
-        <Stack.Screen name="ElderMainTabs" component={ElderMainTabs} />
+          {/* Main App with Tabs - HAS NAVBAR */}
+          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <Stack.Screen name="ElderMainTabs" component={ElderMainTabs} />
 
-        {/* Modal/Full-screen pages - NO NAVBAR */}
-        <Stack.Screen name="AddNewElder" component={AddNewElder} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="caregiverEditProfile" component={caregiverEditProfile} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="elderEditProfile" component={elderEditProfile} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="caregiverChat" component={CaregiverChat} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="caregiverElderInfo" component={CaregiverElderInfo} options={{ presentation: 'card'}}/>
-        
-        {/* Chat Screens */}
-        <Stack.Screen name="CaregiverChatPage" component={CaregiverChatPage} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="ElderChatPage" component={ElderChatPage} options={{ presentation: 'card'}}/>
-        
-        {/* Settings Screens */}
-        <Stack.Screen name="CaregiverAccountManage" component={CaregiverAccountManagePage} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="ElderAccountManage" component={ElderAccountManagePage} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="NotificationSettings" component={NotificationSettingsPage} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="Accessibility" component={AccessibilityPage} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="Privacy" component={PrivacyPage} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="HelpSupport" component={HelpSupportPage} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="About" component={AboutPage} options={{ presentation: 'card'}}/>
-      </Stack.Navigator>
-    </NavigationContainer>
+          {/* Modal/Full-screen pages - NO NAVBAR */}
+          <Stack.Screen name="AddNewElder" component={AddNewElder} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="caregiverEditProfile" component={caregiverEditProfile} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="elderEditProfile" component={elderEditProfile} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="caregiverChat" component={CaregiverChat} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="caregiverElderInfo" component={CaregiverElderInfo} options={{ presentation: 'card'}}/>
+          
+          {/* Chat Screens */}
+          <Stack.Screen name="CaregiverChatPage" component={CaregiverChatPage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="ElderChatPage" component={ElderChatPage} options={{ presentation: 'card'}}/>
+          
+          {/* Settings Screens */}
+          <Stack.Screen name="CaregiverAccountManage" component={CaregiverAccountManagePage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="ElderAccountManage" component={ElderAccountManagePage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="NotificationSettings" component={NotificationSettingsPage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="Accessibility" component={AccessibilityPage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="Privacy" component={PrivacyPage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="HelpSupport" component={HelpSupportPage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="About" component={AboutPage} options={{ presentation: 'card'}}/>
+        </Stack.Navigator>
+      </NavigationContainer>
+    </AccessibilityProvider>
   );
 }

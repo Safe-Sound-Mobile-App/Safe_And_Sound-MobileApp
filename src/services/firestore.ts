@@ -1148,6 +1148,16 @@ export interface NotificationPreferences {
   updatedAt: FirebaseFirestoreTypes.Timestamp;
 }
 
+export interface PrivacyPreferences {
+  userId: string;
+  locationSharing: boolean;
+  healthDataSharing: boolean;
+  shareHeartRate: boolean;
+  shareSpO2: boolean;
+  shareFallDetection: boolean;
+  updatedAt: FirebaseFirestoreTypes.Timestamp;
+}
+
 /**
  * Listen to notifications for a user
  */
@@ -1493,6 +1503,78 @@ export const saveNotificationPreferences = async (
     return {
       success: false,
       error: error.message || 'Failed to save notification preferences',
+    };
+  }
+};
+
+// ========== Privacy Preferences ==========
+
+/**
+ * Get privacy preferences for a user
+ * @param userId - User ID
+ * @returns Privacy preferences or default values
+ */
+export const getPrivacyPreferences = async (
+  userId: string
+): Promise<ServiceResult<PrivacyPreferences>> => {
+  try {
+    const doc = await firestore()
+      .collection('privacyPreferences')
+      .doc(userId)
+      .get();
+
+    if (doc.exists) {
+      return {
+        success: true,
+        data: doc.data() as PrivacyPreferences,
+      };
+    }
+
+    // Return default preferences (all enabled by default)
+    const defaultPreferences: PrivacyPreferences = {
+      userId,
+      locationSharing: true,
+      healthDataSharing: true,
+      shareHeartRate: true,
+      shareSpO2: true,
+      shareFallDetection: true,
+      updatedAt: firestore.Timestamp.now(),
+    };
+
+    return { success: true, data: defaultPreferences };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to get privacy preferences',
+    };
+  }
+};
+
+/**
+ * Save privacy preferences for a user
+ * @param preferences - Privacy preferences
+ * @returns Success result
+ */
+export const savePrivacyPreferences = async (
+  preferences: Partial<PrivacyPreferences> & { userId: string }
+): Promise<ServiceResult<void>> => {
+  try {
+    await firestore()
+      .collection('privacyPreferences')
+      .doc(preferences.userId)
+      .set(
+        {
+          ...preferences,
+          updatedAt: firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to save privacy preferences',
     };
   }
 };

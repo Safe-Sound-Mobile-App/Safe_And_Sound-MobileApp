@@ -112,5 +112,9 @@ service cloud.firestore {
     match /notificationPreferences/{userId} {
       allow read, write: if isOwner(userId);
     }
+    
+    match /privacyPreferences/{userId} {
+      allow read, write: if isOwner(userId);
+    }
   }
 }

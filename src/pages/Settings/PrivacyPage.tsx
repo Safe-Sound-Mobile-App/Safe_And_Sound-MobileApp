@@ -1,19 +1,82 @@
-import React, { useState } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Switch, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GradientHeader from '../../header/GradientHeader';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../App";
 import { caregiverSettingStyles } from '../../global_style/caregiverUseSection/caregiverSettingStyles';
+import auth from '@react-native-firebase/auth';
+import { getPrivacyPreferences, savePrivacyPreferences } from '../../services/firestore';
 
 type Props = NativeStackScreenProps<RootStackParamList, "Privacy">;
 
 export default function PrivacyPage({ navigation }: Props) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [locationSharing, setLocationSharing] = useState(true);
   const [healthDataSharing, setHealthDataSharing] = useState(true);
   const [shareHeartRate, setShareHeartRate] = useState(true);
   const [shareSpO2, setShareSpO2] = useState(true);
   const [shareFallDetection, setShareFallDetection] = useState(true);
+
+  useEffect(() => {
+    loadPreferences();
+  }, []);
+
+  const loadPreferences = async () => {
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) return;
+
+      const result = await getPrivacyPreferences(currentUser.uid);
+      if (result.success && result.data) {
+        setLocationSharing(result.data.locationSharing);
+        setHealthDataSharing(result.data.healthDataSharing);
+        setShareHeartRate(result.data.shareHeartRate);
+        setShareSpO2(result.data.shareSpO2);
+        setShareFallDetection(result.data.shareFallDetection);
+      }
+    } catch (error) {
+      console.error('Error loading privacy preferences:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSavePreferences = async () => {
+    try {
+      setSaving(true);
+      const currentUser = auth().currentUser;
+      if (!currentUser) return;
+
+      const result = await savePrivacyPreferences({
+        userId: currentUser.uid,
+        locationSharing,
+        healthDataSharing,
+        shareHeartRate,
+        shareSpO2,
+        shareFallDetection,
+      });
+
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'Failed to save privacy preferences');
+      }
+    } catch (error) {
+      console.error('Error saving privacy preferences:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggle = async (
+    setter: (value: boolean) => void,
+    currentValue: boolean
+  ) => {
+    setter(!currentValue);
+    // Auto-save after toggle
+    setTimeout(() => handleSavePreferences(), 500);
+  };
 
   const renderToggleItem = (
     icon: string,
@@ -53,69 +116,78 @@ export default function PrivacyPage({ navigation }: Props) {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Location Sharing */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Location</Text>
-          
-          {renderToggleItem(
-            'location',
-            'Real-time Location Sharing',
-            'Share your current location with caregivers',
-            locationSharing,
-            setLocationSharing
-          )}
-        </View>
-
-        {/* Health Data Sharing */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Health Data</Text>
-          
-          {renderToggleItem(
-            'fitness',
-            'Health Data Sharing',
-            'Share health metrics with caregivers',
-            healthDataSharing,
-            setHealthDataSharing
-          )}
-
-          {healthDataSharing && (
-            <>
-              {renderToggleItem(
-                'heart',
-                'Heart Rate',
-                'Share heart rate measurements',
-                shareHeartRate,
-                setShareHeartRate,
-                true
-              )}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#008080" />
+            <Text style={styles.loadingText}>Loading privacy settings...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Location Sharing */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Location</Text>
               
               {renderToggleItem(
-                'water',
-                'Blood Oxygen (SpO2)',
-                'Share oxygen saturation levels',
-                shareSpO2,
-                setShareSpO2,
-                true
+                'location',
+                'Real-time Location Sharing',
+                'Share your current location with caregivers',
+                locationSharing,
+                (value) => handleToggle(setLocationSharing, locationSharing)
               )}
+            </View>
+
+            {/* Health Data Sharing */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Health Data</Text>
               
               {renderToggleItem(
-                'warning',
-                'Fall Detection',
-                'Share fall detection alerts',
-                shareFallDetection,
-                setShareFallDetection,
-                true
+                'fitness',
+                'Health Data Sharing',
+                'Share health metrics with caregivers',
+                healthDataSharing,
+                (value) => handleToggle(setHealthDataSharing, healthDataSharing)
               )}
-            </>
-          )}
-        </View>
 
-        <View style={styles.warningBox}>
-          <Ionicons name="shield-checkmark" size={20} color="#10b981" />
-          <Text style={styles.warningText}>
-            Your privacy is important. You can control what data is shared with your caregivers. Full functionality coming in Phase 5.
-          </Text>
-        </View>
+              {healthDataSharing && (
+                <>
+                  {renderToggleItem(
+                    'heart',
+                    'Heart Rate',
+                    'Share heart rate measurements',
+                    shareHeartRate,
+                    (value) => handleToggle(setShareHeartRate, shareHeartRate),
+                    true
+                  )}
+                  
+                  {renderToggleItem(
+                    'water',
+                    'Blood Oxygen (SpO2)',
+                    'Share oxygen saturation levels',
+                    shareSpO2,
+                    (value) => handleToggle(setShareSpO2, shareSpO2),
+                    true
+                  )}
+                  
+                  {renderToggleItem(
+                    'warning',
+                    'Fall Detection',
+                    'Share fall detection alerts',
+                    shareFallDetection,
+                    (value) => handleToggle(setShareFallDetection, shareFallDetection),
+                    true
+                  )}
+                </>
+              )}
+            </View>
+
+            <View style={styles.warningBox}>
+              <Ionicons name="shield-checkmark" size={20} color="#10b981" />
+              <Text style={styles.warningText}>
+                {saving ? 'Saving...' : 'Your privacy settings are saved and applied across the app.'}
+              </Text>
+            </View>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -209,5 +281,16 @@ const styles = {
     fontSize: 14,
     color: '#065f46',
     marginLeft: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#6b7280',
+    marginTop: 12,
   },
 };

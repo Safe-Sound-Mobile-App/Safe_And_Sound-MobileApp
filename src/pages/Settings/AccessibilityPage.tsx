@@ -102,8 +102,8 @@ export default function AccessibilityPage({ navigation }: Props) {
                   value={localTextSize}
                   onValueChange={handleTextSizeChange}
                   onSlidingComplete={handleTextSizeComplete}
-                  minimumTrackTintColor="#008080"
-                  maximumTrackTintColor="#d1d5db"
+                  minimumTrackTintColor="#00a896"
+                  maximumTrackTintColor="#9ca3af"
                   thumbTintColor="#008080"
                   step={2}
                 />
@@ -217,6 +217,10 @@ const styles = {
   },
   sliderContainer: {
     padding: 16,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
   },
   sliderHeader: {
     flexDirection: 'row' as const,
@@ -236,7 +240,8 @@ const styles = {
   },
   slider: {
     width: '100%',
-    height: 40,
+    height: 50,
+    marginVertical: 8,
   },
   previewBox: {
     backgroundColor: '#f9fafb',

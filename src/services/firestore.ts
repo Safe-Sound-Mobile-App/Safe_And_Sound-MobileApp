@@ -1347,3 +1347,66 @@ export const updateBackgroundImage = async (
     };
   }
 };
+
+// ========== Relationship Management ==========
+
+/**
+ * Delete relationship between caregiver and elder
+ * @param caregiverId - Caregiver user ID
+ * @param elderId - Elder user ID
+ * @returns Success result
+ */
+export const deleteRelationship = async (
+  caregiverId: string,
+  elderId: string
+): Promise<ServiceResult<void>> => {
+  try {
+    // Find the relationship document
+    const relationshipsSnapshot = await firestore()
+      .collection('relationships')
+      .where('caregiverId', '==', caregiverId)
+      .where('elderId', '==', elderId)
+      .get();
+
+    if (relationshipsSnapshot.empty) {
+      return {
+        success: false,
+        error: 'Relationship not found',
+      };
+    }
+
+    // Delete the relationship document
+    const relationshipDoc = relationshipsSnapshot.docs[0];
+    await relationshipDoc.ref.delete();
+
+    // Optional: Create a notification for the other party
+    const notificationMessage = 'A relationship has been removed';
+    
+    // Notify caregiver
+    await firestore().collection('notifications').add({
+      userId: caregiverId,
+      type: 'relationship_removed',
+      title: 'Relationship Removed',
+      message: notificationMessage,
+      read: false,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+    });
+
+    // Notify elder
+    await firestore().collection('notifications').add({
+      userId: elderId,
+      type: 'relationship_removed',
+      title: 'Relationship Removed',
+      message: notificationMessage,
+      read: false,
+      createdAt: firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to delete relationship',
+    };
+  }
+};

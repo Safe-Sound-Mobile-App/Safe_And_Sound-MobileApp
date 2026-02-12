@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../App";
 import { caregiverSettingStyles } from '../../global_style/caregiverUseSection/caregiverSettingStyles';
 import auth from '@react-native-firebase/auth';
-import { getCaregiverElders, getUserProfile } from '../../services/firestore';
+import { getCaregiverElders, getUserProfile, deleteRelationship } from '../../services/firestore';
 
 type Props = NativeStackScreenProps<RootStackParamList, "CaregiverAccountManage">;
 
@@ -59,15 +59,30 @@ export default function CaregiverAccountManagePage({ navigation }: Props) {
   const handleRemoveElder = (elder: ElderItem) => {
     Alert.alert(
       'Remove Elder',
-      `Are you sure you want to stop caring for ${elder.name}?`,
+      `Are you sure you want to stop caring for ${elder.name}?\n\nThis will remove all shared data and chat history.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Remove',
           style: 'destructive',
           onPress: async () => {
-            // TODO: Implement removeRelationship()
-            Alert.alert('Coming Soon', 'Remove functionality will be implemented in Phase 2');
+            try {
+              const currentUser = auth().currentUser;
+              if (!currentUser) return;
+
+              const result = await deleteRelationship(currentUser.uid, elder.id);
+              
+              if (result.success) {
+                Alert.alert('Success', `Removed ${elder.name} successfully`);
+                // Refresh the list
+                fetchElders();
+              } else {
+                Alert.alert('Error', result.error || 'Failed to remove elder');
+              }
+            } catch (error) {
+              console.error('Error removing elder:', error);
+              Alert.alert('Error', 'An unexpected error occurred');
+            }
           },
         },
       ]

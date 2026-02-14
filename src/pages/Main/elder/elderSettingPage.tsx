@@ -169,7 +169,7 @@ export default function ElderSetting({ navigation }: Props) {
                         borderRadius: 12,
                         marginHorizontal: 20,
                         marginTop: 24,
-                        marginBottom: 40,
+                        marginBottom: 100,
                         alignItems: 'center',
                         opacity: signingOut ? 0.6 : 1,
                     }}

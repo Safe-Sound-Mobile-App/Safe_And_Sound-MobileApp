@@ -86,13 +86,21 @@ export const addNewElderStyles = StyleSheet.create({
     borderRadius: 25,
     backgroundColor: '#e5e7eb',
   },
-  elderName: {
+  elderCardCenter: {
     flex: 1,
+    marginLeft: 15,
+  },
+  elderName: {
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'BalooBhaijaan2_600SemiBold',
     color: '#374151',
-    marginLeft: 15,
+  },
+  relationshipStatusText: {
+    fontSize: 13,
+    fontFamily: 'BalooBhaijaan2_400Regular',
+    color: '#6b7280',
+    marginTop: 4,
   },
   addButton: {
     width: 36,
@@ -109,6 +117,20 @@ export const addNewElderStyles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  addButtonDisabled: {
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonDisabledText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'BalooBhaijaan2_600SemiBold',
+    color: '#6b7280',
   },
   // Modal Styles
   modalOverlay: {

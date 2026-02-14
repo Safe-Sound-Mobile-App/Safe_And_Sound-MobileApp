@@ -733,6 +733,32 @@ export const createRelationship = async (
 };
 
 /**
+ * Get relationship status between caregiver and elder (for Add Elder page)
+ */
+export const getRelationshipStatus = async (
+  caregiverId: string,
+  elderId: string
+): Promise<ServiceResult<'none' | 'pending' | 'active'>> => {
+  try {
+    const relationshipId = `${caregiverId}_${elderId}`;
+    const doc = await firestore().collection('relationships').doc(relationshipId).get();
+    if (!doc.exists) {
+      return { success: true, data: 'none' };
+    }
+    const status = (doc.data() as Relationship).status;
+    if (status === 'pending' || status === 'active') {
+      return { success: true, data: status };
+    }
+    return { success: true, data: 'none' };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to get relationship status',
+    };
+  }
+};
+
+/**
  * Get all elders for a caregiver
  */
 export const getCaregiverElders = async (

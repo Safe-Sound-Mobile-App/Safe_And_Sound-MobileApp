@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -12,6 +12,7 @@ import {
     TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
@@ -48,62 +49,56 @@ export default function ElderHomepage({ navigation }: Props) {
     const [spO2, setSpO2] = useState('98');
     const [gyroscope, setGyroscope] = useState<'Normal' | 'Fell'>('Normal');
 
-    // Fetch caregivers data from Firestore
-    useEffect(() => {
-        const fetchCaregivers = async () => {
-            try {
-                const currentUser = auth().currentUser;
-                if (!currentUser) {
-                    Alert.alert('Error', 'No authenticated user found');
-                    setLoading(false);
-                    return;
-                }
-
-                // Get caregivers for this elder
-                const caregiversResult = await getElderCaregivers(currentUser.uid);
-
-                if (caregiversResult.success && caregiversResult.data) {
-                    // Transform Caregiver data to CaregiverData format
-                    const transformedData: CaregiverData[] = await Promise.all(
-                        caregiversResult.data.map(async (caregiver) => {
-                            // Get user info (firstName, lastName, status, photoURL)
-                            const userResult = await getUserProfile(caregiver.userId);
-                            const userName = userResult.success && userResult.data
-                                ? `${userResult.data.firstName} ${userResult.data.lastName}`
-                                : 'Unknown';
-                            const status = userResult.success && userResult.data
-                                ? userResult.data.status
-                                : 'offline';
-                            
-                            // Use photoURL if available, otherwise use default avatar
-                            const profileImage = userResult.success && userResult.data?.photoURL
-                                ? { uri: userResult.data.photoURL }
-                                : defaultAvatar;
-
-                            return {
-                                id: caregiver.userId,
-                                name: userName,
-                                image: profileImage,
-                                status: status,
-                            };
-                        })
-                    );
-
-                    setCaregivers(transformedData);
-                } else {
-                    // No caregivers found or error
-                    setCaregivers([]);
-                }
-            } catch (error) {
-                console.error('Error fetching caregivers:', error);
-                Alert.alert('Error', 'Failed to load caregiver data');
-            } finally {
+    const fetchCaregivers = useCallback(async () => {
+        try {
+            const currentUser = auth().currentUser;
+            if (!currentUser) {
                 setLoading(false);
+                return;
             }
-        };
+            setLoading(true);
 
-        fetchCaregivers();
+            const caregiversResult = await getElderCaregivers(currentUser.uid);
+
+            if (caregiversResult.success && caregiversResult.data) {
+                const transformedData: CaregiverData[] = await Promise.all(
+                    caregiversResult.data.map(async (caregiver) => {
+                        const userResult = await getUserProfile(caregiver.userId);
+                        const userName = userResult.success && userResult.data
+                            ? `${userResult.data.firstName} ${userResult.data.lastName}`
+                            : 'Unknown';
+                        const status = userResult.success && userResult.data
+                            ? userResult.data.status
+                            : 'offline';
+                        const profileImage = userResult.success && userResult.data?.photoURL
+                            ? { uri: userResult.data.photoURL }
+                            : defaultAvatar;
+                        return {
+                            id: caregiver.userId,
+                            name: userName,
+                            image: profileImage,
+                            status: status,
+                        };
+                    })
+                );
+                setCaregivers(transformedData);
+            } else {
+                setCaregivers([]);
+            }
+        } catch (error) {
+            console.error('Error fetching caregivers:', error);
+            setCaregivers([]);
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    // Fetch on mount and whenever screen comes into focus (e.g. after accepting a caregiver on Notification)
+    useFocusEffect(
+        useCallback(() => {
+            fetchCaregivers();
+        }, [fetchCaregivers])
+    );
 
     const handleChat = (caregiverId: string, caregiverName: string) => {
         navigation.navigate('ElderChatPage', { caregiverId, caregiverName });

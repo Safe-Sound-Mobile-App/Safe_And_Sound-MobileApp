@@ -32,7 +32,7 @@ export default function ElderNotification({ navigation }: Props) {
     const [activeTab, setActiveTab] = useState<'caregiver_request' | 'activities'>('caregiver_request');
 
     // Data States
-    const [requests, setRequests] = useState<Array<{ id: string; caregiverId: string; caregiverName: string }>>([]);
+    const [requests, setRequests] = useState<Array<{ id: string; caregiverId: string; caregiverName: string; caregiverPhotoURL: string | null }>>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -138,11 +138,16 @@ export default function ElderNotification({ navigation }: Props) {
     };
 
     // --- Render Items ---
-    const renderCaregiverRequest = (item: { id: string; caregiverId: string; caregiverName: string }) => (
+    const accountIcon = require('../../../../assets/icons/navbar/account.png'); // fallback when no caregiver photo
+    const renderCaregiverRequest = (item: { id: string; caregiverId: string; caregiverName: string; caregiverPhotoURL: string | null }) => (
         <View key={item.id} style={elderNotificationStyles.requestCard}>
-            <View style={{flexDirection:'row', alignItems:'center'}}>
-                <View style={elderNotificationStyles.avatarPlaceholder} />
-                <View style={{marginLeft: 15}}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Image
+                    source={item.caregiverPhotoURL ? { uri: item.caregiverPhotoURL } : accountIcon}
+                    style={elderNotificationStyles.avatarImage}
+                    resizeMode="cover"
+                />
+                <View style={{ marginLeft: 15 }}>
                     <Text style={elderNotificationStyles.caregiverName}>{item.caregiverName}</Text>
                 </View>
             </View>
@@ -171,6 +176,8 @@ export default function ElderNotification({ navigation }: Props) {
                 await markNotificationAsRead(notif.id);
             }
         };
+        const isDanger = notif.type === 'danger' || notif.type === 'emergency';
+        const isWarning = notif.type === 'warning';
 
         return (
             <TouchableOpacity
@@ -188,14 +195,14 @@ export default function ElderNotification({ navigation }: Props) {
                     <View style={elderNotificationStyles.activityTitleRow}>
                         <Text style={[
                             elderNotificationStyles.activityTitle,
-                            { color: getNotificationTextColor(notif.type) }
+                            { color: notif.type === 'message' ? '#374151' : (isDanger ? '#dc2626' : '#d97706') }
                         ]}>
                             {notif.title}
                         </Text>
                         {notif.type !== 'message' && (
                             <Image
-                                source={notif.type === 'danger' ? triangleIcon : diamondIcon}
-                                style={[elderNotificationStyles.alertIcon, {tintColor: getNotificationTextColor(notif.type)}]}
+                                source={isDanger ? triangleIcon : diamondIcon}
+                                style={elderNotificationStyles.alertIcon}
                                 resizeMode="contain"
                             />
                         )}
@@ -203,7 +210,7 @@ export default function ElderNotification({ navigation }: Props) {
 
                     <Text style={[
                         elderNotificationStyles.activityMessage,
-                        { color: getNotificationTextColor(notif.type) }
+                        { color: notif.type === 'message' ? '#6b7280' : (isDanger ? '#7f1d1d' : '#78350f') }
                     ]}>
                         {notif.message}
                     </Text>
@@ -276,14 +283,14 @@ export default function ElderNotification({ navigation }: Props) {
                                 style={{ borderRadius: 25, padding: 3 }}
                             >
                                 <View style={[elderNotificationStyles.tabButton, { backgroundColor: '#e5e7eb', borderWidth: 0 }]}>
-                                    <Text style={[elderNotificationStyles.tabText, elderNotificationStyles.tabTextActive]}>
-                                        Activities Notification
+                                    <Text style={[elderNotificationStyles.tabText, elderNotificationStyles.tabTextActive]} numberOfLines={1}>
+                                        Activities
                                     </Text>
                                 </View>
                             </LinearGradient>
                         ) : (
                             <View style={elderNotificationStyles.tabButton}>
-                                <Text style={elderNotificationStyles.tabText}>Activities Notification</Text>
+                                <Text style={elderNotificationStyles.tabText} numberOfLines={1}>Activities</Text>
                             </View>
                         )}
                     </TouchableOpacity>

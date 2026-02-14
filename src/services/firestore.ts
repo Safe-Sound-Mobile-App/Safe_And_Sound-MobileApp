@@ -774,6 +774,13 @@ export const getCaregiverElders = async (
 
     const elderIds = relationshipsSnapshot.docs.map((doc) => doc.data().elderId);
 
+    // Sync totalEldersCared (elder accept no longer writes to caregivers doc, so we sync when caregiver loads)
+    try {
+      await firestore().collection('caregivers').doc(caregiverId).update({
+        totalEldersCared: elderIds.length,
+      });
+    } catch (_) {}
+
     if (elderIds.length === 0) {
       return { success: true, data: [] };
     }
@@ -1235,7 +1242,7 @@ export const markNotificationAsRead = async (
  */
 export const getPendingCaregiverRequests = (
   elderId: string,
-  onRequestsUpdate: (requests: Array<{ id: string; caregiverId: string; caregiverName: string }>) => void,
+  onRequestsUpdate: (requests: Array<{ id: string; caregiverId: string; caregiverName: string; caregiverPhotoURL: string | null }>) => void,
   onError: (error: string) => void
 ) => {
   const unsubscribe = firestore()
@@ -1247,13 +1254,12 @@ export const getPendingCaregiverRequests = (
         const requestPromises = snapshot.docs.map(async (doc) => {
           const caregiverId = doc.data().caregiverId;
           const caregiverProfile = await getUserProfile(caregiverId);
-          
+          const user = caregiverProfile.success && caregiverProfile.data ? caregiverProfile.data : null;
           return {
             id: doc.id,
             caregiverId,
-            caregiverName: caregiverProfile.success && caregiverProfile.data
-              ? `${caregiverProfile.data.firstName} ${caregiverProfile.data.lastName}`
-              : 'Unknown',
+            caregiverName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
+            caregiverPhotoURL: user?.photoURL ?? null,
           };
         });
 
@@ -1277,22 +1283,12 @@ export const respondToCaregiverRequest = async (
 ): Promise<ServiceResult<void>> => {
   try {
     if (accept) {
-      const relDoc = await firestore().collection('relationships').doc(relationshipId).get();
-      const caregiverId = relDoc.exists ? (relDoc.data() as Relationship).caregiverId : null;
-
       await firestore().collection('relationships').doc(relationshipId).update({
         status: 'active',
         updatedAt: firestore.FieldValue.serverTimestamp(),
       });
-
-      if (caregiverId) {
-        await firestore()
-          .collection('caregivers')
-          .doc(caregiverId)
-          .update({
-            totalEldersCared: firestore.FieldValue.increment(1),
-          });
-      }
+      // Note: totalEldersCared is synced when caregiver loads their elders (syncCaregiverElderCount)
+      // so we don't need elder to write to caregivers doc (would cause permission-denied).
     } else {
       await firestore().collection('relationships').doc(relationshipId).delete();
     }

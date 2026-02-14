@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
 import GradientHeader from '../../header/GradientHeader';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../App";
@@ -11,7 +10,7 @@ import { useAccessibility } from '../../contexts/AccessibilityContext';
 type Props = NativeStackScreenProps<RootStackParamList, "Accessibility">;
 
 export default function AccessibilityPage({ navigation }: Props) {
-  const { settings, updateTextSize, updateHighContrast, loading } = useAccessibility();
+  const { settings, updateTextSize, loading } = useAccessibility();
   const [localTextSize, setLocalTextSize] = useState(settings.textSize);
   const [saving, setSaving] = useState(false);
 
@@ -19,38 +18,16 @@ export default function AccessibilityPage({ navigation }: Props) {
     setLocalTextSize(settings.textSize);
   }, [settings.textSize]);
 
-  const handleTextSizeChange = async (size: number) => {
-    setLocalTextSize(size);
-  };
-
-  const handleTextSizeComplete = async (size: number) => {
+  const handleTextSizeSelect = async (size: number) => {
     try {
       setSaving(true);
+      setLocalTextSize(size);
       await updateTextSize(size);
     } catch (error) {
       Alert.alert('Error', 'Failed to save text size');
     } finally {
       setSaving(false);
     }
-  };
-
-  const handleHighContrastToggle = async (value: boolean) => {
-    try {
-      setSaving(true);
-      await updateHighContrast(value);
-      Alert.alert('Success', value ? 'High contrast mode enabled' : 'High contrast mode disabled');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to update high contrast mode');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const getTextSizeLabel = () => {
-    if (localTextSize <= 14) return 'Small';
-    if (localTextSize <= 16) return 'Medium';
-    if (localTextSize <= 18) return 'Large';
-    return 'Extra Large';
   };
 
   return (
@@ -77,51 +54,62 @@ export default function AccessibilityPage({ navigation }: Props) {
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Text Size</Text>
               
-              <View style={styles.sliderContainer}>
-                <View style={styles.sliderHeader}>
-                  <Text style={styles.sliderLabel}>Font Size</Text>
-                  <Text style={styles.sliderValue}>{getTextSizeLabel()} ({Math.round(localTextSize)}px)</Text>
-                </View>
-                
-                <Slider
-                  style={styles.slider}
-                  minimumValue={12}
-                  maximumValue={24}
-                  value={localTextSize}
-                  onValueChange={handleTextSizeChange}
-                  onSlidingComplete={handleTextSizeComplete}
-                  minimumTrackTintColor="#00a896"
-                  maximumTrackTintColor="#9ca3af"
-                  thumbTintColor="#008080"
-                  step={2}
-                />
-                
-                <View style={styles.previewBox}>
-                  <Text style={[styles.previewText, { fontSize: localTextSize }]}>
-                    Preview: This is how text will look in the app
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* High Contrast */}
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Display</Text>
-              
-              <View style={styles.toggleItem}>
-                <View style={styles.toggleTextContainer}>
-                  <Text style={styles.toggleTitle}>High Contrast Mode</Text>
-                  <Text style={styles.toggleSubtitle}>
-                    Increase color contrast for better visibility
-                  </Text>
-                </View>
-                <Switch
-                  value={settings.highContrast}
-                  onValueChange={handleHighContrastToggle}
-                  trackColor={{ false: '#d1d5db', true: '#10b981' }}
-                  thumbColor="#fff"
+              <View style={styles.sizeButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.sizeButton, localTextSize === 12 && styles.sizeButtonActive]}
+                  onPress={() => handleTextSizeSelect(12)}
                   disabled={saving}
-                />
+                >
+                  <Text style={[styles.sizeButtonText, localTextSize === 12 && styles.sizeButtonTextActive]}>
+                    Small (12px)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.sizeButton, localTextSize === 14 && styles.sizeButtonActive]}
+                  onPress={() => handleTextSizeSelect(14)}
+                  disabled={saving}
+                >
+                  <Text style={[styles.sizeButtonText, localTextSize === 14 && styles.sizeButtonTextActive]}>
+                    Medium (14px)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.sizeButton, localTextSize === 16 && styles.sizeButtonActive]}
+                  onPress={() => handleTextSizeSelect(16)}
+                  disabled={saving}
+                >
+                  <Text style={[styles.sizeButtonText, localTextSize === 16 && styles.sizeButtonTextActive]}>
+                    Default (16px)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.sizeButton, localTextSize === 18 && styles.sizeButtonActive]}
+                  onPress={() => handleTextSizeSelect(18)}
+                  disabled={saving}
+                >
+                  <Text style={[styles.sizeButtonText, localTextSize === 18 && styles.sizeButtonTextActive]}>
+                    Large (18px)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.sizeButton, localTextSize === 20 && styles.sizeButtonActive]}
+                  onPress={() => handleTextSizeSelect(20)}
+                  disabled={saving}
+                >
+                  <Text style={[styles.sizeButtonText, localTextSize === 20 && styles.sizeButtonTextActive]}>
+                    Extra Large (20px)
+                  </Text>
+                </TouchableOpacity>
+              </View>
+                
+              <View style={styles.previewBox}>
+                <Text style={[styles.previewText, { fontSize: localTextSize }]}>
+                  Preview: This is how text will look in the app
+                </Text>
               </View>
             </View>
 
@@ -176,64 +164,45 @@ const styles = {
     paddingTop: 16,
     paddingBottom: 8,
   },
-  sliderContainer: {
-    padding: 16,
+  sizeButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  sizeButton: {
     backgroundColor: '#f3f4f6',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    marginHorizontal: 16,
-    marginBottom: 12,
-  },
-  sliderHeader: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
+    borderWidth: 2,
+    borderColor: 'transparent',
     alignItems: 'center' as const,
-    marginBottom: 12,
   },
-  sliderLabel: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#1f2937',
+  sizeButtonActive: {
+    backgroundColor: '#e0f2f1',
+    borderColor: '#008080',
   },
-  sliderValue: {
-    fontSize: 14,
-    fontWeight: '600' as const,
+  sizeButtonText: {
+    fontSize: 15,
+    fontWeight: '500' as const,
+    color: '#4b5563',
+  },
+  sizeButtonTextActive: {
+    fontSize: 15,
+    fontWeight: '700' as const,
     color: '#008080',
-  },
-  slider: {
-    width: '100%',
-    height: 50,
-    marginVertical: 8,
   },
   previewBox: {
     backgroundColor: '#f9fafb',
     padding: 16,
     borderRadius: 8,
-    marginTop: 12,
+    marginTop: 4,
+    marginHorizontal: 16,
+    marginBottom: 12,
   },
   previewText: {
     color: '#1f2937',
     lineHeight: 24,
-  },
-  toggleItem: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'space-between' as const,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  toggleTextContainer: {
-    flex: 1,
-    marginRight: 12,
-  },
-  toggleTitle: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  toggleSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
   },
   infoBox: {
     flexDirection: 'row' as const,

@@ -87,7 +87,7 @@ export default function CaregiverNotification({ navigation }: Props) {
       (error) => {
         console.error('Notifications error:', error);
         setLoadingActivities(false);
-        setNotifications([]);
+        // Don't clear notifications on error – keep existing list so items (e.g. "relationship removed") don't disappear
       }
     );
 

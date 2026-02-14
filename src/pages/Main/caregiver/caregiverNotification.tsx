@@ -9,7 +9,14 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList, MainTabParamList } from "../../../App";
 import auth from '@react-native-firebase/auth';
-import { listenToNotifications, markNotificationAsRead, Notification } from '../../../services/firestore';
+import {
+  listenToNotifications,
+  listenToCaregiverSentRequests,
+  cancelCaregiverRequest,
+  markNotificationAsRead,
+  Notification,
+  CaregiverSentRequest,
+} from '../../../services/firestore';
 
 const notificationIcon = require('../../../../assets/icons/navbar/notification.png');
 const triangleIcon = require('../../../../assets/icons/alert/triangle-exclamation.png');
@@ -26,10 +33,14 @@ type Props = {
   navigation: CombinedNavigationProp;
 };
 
+const elderIcon = require('../../../../assets/icons/elder.png');
+
 export default function CaregiverNotification({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<'elder_accept' | 'activities'>('elder_accept');
+  const [sentRequests, setSentRequests] = useState<CaregiverSentRequest[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingElderAccept, setLoadingElderAccept] = useState(true);
+  const [loadingActivities, setLoadingActivities] = useState(true);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
@@ -37,28 +48,42 @@ export default function CaregiverNotification({ navigation }: Props) {
     const currentUser = auth().currentUser;
     if (!currentUser) {
       Alert.alert('Error', 'No authenticated user');
-      setLoading(false);
+      setLoadingElderAccept(false);
+      setLoadingActivities(false);
       return;
     }
 
-    const unsubscribe = listenToNotifications(
+    const unsubSent = listenToCaregiverSentRequests(
       currentUser.uid,
-      (newNotifications) => {
-        setNotifications(newNotifications);
-        setLoading(false);
+      (requests) => {
+        setSentRequests(requests);
+        setLoadingElderAccept(false);
       },
       (error) => {
-        console.error('Notifications error:', error);
-        Alert.alert('Error', error);
-        setLoading(false);
+        console.error('Sent requests error:', error);
+        setLoadingElderAccept(false);
       }
     );
 
-    return () => unsubscribe();
+    const unsubNotifs = listenToNotifications(
+      currentUser.uid,
+      (newNotifications) => {
+        setNotifications(newNotifications);
+        setLoadingActivities(false);
+      },
+      (error) => {
+        console.error('Notifications error:', error);
+        setLoadingActivities(false);
+        Alert.alert('Error', error);
+      }
+    );
+
+    return () => {
+      unsubSent();
+      unsubNotifs();
+    };
   }, []);
 
-  // Separate notifications by type
-  const elderAcceptNotifs = notifications.filter((n) => n.type === 'elder_accept');
   const activityNotifs = notifications.filter((n) => n.type !== 'elder_accept');
 
   // Get notification badge color
@@ -72,15 +97,28 @@ export default function CaregiverNotification({ navigation }: Props) {
     }
   };
 
-  // Handle Elder Accept notification tap
-  const handleElderAcceptTap = async (notif: Notification) => {
-    // Mark as read
-    if (!notif.read) {
-      await markNotificationAsRead(notif.id);
-    }
-    
-    // Could navigate to elder profile if relatedId exists
-    console.log('Elder Accept notification:', notif.message);
+  // Cancel a pending request (caregiver)
+  const handleCancelRequest = (request: CaregiverSentRequest) => {
+    if (request.status !== 'pending') return;
+    Alert.alert(
+      'Cancel request',
+      `Cancel your request to ${request.elderName}?`,
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Yes, cancel',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await cancelCaregiverRequest(request.id);
+            if (result.success) {
+              Alert.alert('Cancelled', 'Request has been cancelled.');
+            } else {
+              Alert.alert('Error', result.error || 'Failed to cancel request');
+            }
+          },
+        },
+      ]
+    );
   };
 
   // Handle Activity notification tap
@@ -121,25 +159,35 @@ export default function CaregiverNotification({ navigation }: Props) {
     );
   };
 
-  // Render Elder Accept Badge
-  const renderElderAcceptBadge = (notif: Notification) => (
-    <TouchableOpacity
-      key={notif.id}
-      style={notificationStyles.elderAcceptBadge}
-      onPress={() => handleElderAcceptTap(notif)}
-      activeOpacity={0.7}
-    >
-      {!notif.read && <View style={notificationStyles.unreadDot} />}
-      
-      <View style={notificationStyles.badgeContent}>
-        <Text style={notificationStyles.elderAcceptTitle}>{notif.title}</Text>
-        <Text style={notificationStyles.elderAcceptMessage}>{notif.message}</Text>
+  // Render Sent Request card (Elder Accept tab: pending + accepted)
+  const renderSentRequestCard = (request: CaregiverSentRequest) => (
+    <View key={request.id} style={notificationStyles.sentRequestCard}>
+      <Image
+        source={request.elderPhotoURL ? { uri: request.elderPhotoURL } : elderIcon}
+        style={notificationStyles.sentRequestAvatar}
+        resizeMode="cover"
+      />
+      <View style={notificationStyles.sentRequestInfo}>
+        <Text style={notificationStyles.sentRequestName}>{request.elderName}</Text>
+        <View style={[notificationStyles.statusBadge, request.status === 'pending' ? notificationStyles.statusPending : notificationStyles.statusAccepted]}>
+          <Text style={[notificationStyles.statusBadgeText, { color: request.status === 'pending' ? '#92400e' : '#065f46' }]}>
+            {request.status === 'pending' ? 'Pending' : 'Accepted'}
+          </Text>
+        </View>
+        <Text style={notificationStyles.sentRequestMeta}>
+          {request.createdAt.toLocaleDateString()} {request.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </Text>
       </View>
-      
-      <Text style={notificationStyles.timestamp}>
-        {notif.timestamp.toLocaleDateString()} - {notif.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </Text>
-    </TouchableOpacity>
+      {request.status === 'pending' && (
+        <TouchableOpacity
+          style={notificationStyles.cancelRequestButton}
+          onPress={() => handleCancelRequest(request)}
+          activeOpacity={0.7}
+        >
+          <Text style={notificationStyles.cancelRequestButtonText}>Cancel</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 
   // Render Activity Badge
@@ -300,16 +348,18 @@ export default function CaregiverNotification({ navigation }: Props) {
 
         {/* Notifications List */}
         <View style={notificationStyles.notificationsList}>
-          {loading ? (
-            <ActivityIndicator size="large" color="#008080" style={{ marginTop: 40 }} />
-          ) : activeTab === 'elder_accept' ? (
-            elderAcceptNotifs.length > 0 ? (
-              elderAcceptNotifs.map(notif => renderElderAcceptBadge(notif))
+          {activeTab === 'elder_accept' ? (
+            loadingElderAccept ? (
+              <ActivityIndicator size="large" color="#008080" style={{ marginTop: 40 }} />
+            ) : sentRequests.length > 0 ? (
+              sentRequests.map(renderSentRequestCard)
             ) : (
               <Text style={{ textAlign: 'center', color: '#9ca3af', marginTop: 20 }}>
-                No elder accept notifications
+                No sent requests. Add an elder from Home to see pending and accepted here.
               </Text>
             )
+          ) : loadingActivities ? (
+            <ActivityIndicator size="large" color="#008080" style={{ marginTop: 40 }} />
           ) : (
             getFilteredNotifications().length > 0 ? (
               getFilteredNotifications().map(notif => renderActivityBadge(notif))

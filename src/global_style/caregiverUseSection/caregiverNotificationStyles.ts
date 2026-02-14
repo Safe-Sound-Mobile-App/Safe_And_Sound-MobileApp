@@ -134,6 +134,73 @@ export const notificationStyles = StyleSheet.create({
     textAlign: 'right',
   },
 
+  // Sent request card (Elder Accept tab)
+  sentRequestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 15,
+    padding: 15,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  sentRequestAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#e5e7eb',
+  },
+  sentRequestInfo: {
+    flex: 1,
+    marginLeft: 15,
+  },
+  sentRequestName: {
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: 'BalooBhaijaan2_600SemiBold',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  sentRequestMeta: {
+    fontSize: 12,
+    fontFamily: 'BalooBhaijaan2_400Regular',
+    color: '#9ca3af',
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  statusPending: {
+    backgroundColor: '#fef3c7',
+  },
+  statusAccepted: {
+    backgroundColor: '#d1fae5',
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'BalooBhaijaan2_600SemiBold',
+  },
+  cancelRequestButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#fee2e2',
+    marginLeft: 8,
+  },
+  cancelRequestButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: 'BalooBhaijaan2_600SemiBold',
+    color: '#dc2626',
+  },
+
   // Activity Badge
   activityBadge: {
     borderRadius: 15,

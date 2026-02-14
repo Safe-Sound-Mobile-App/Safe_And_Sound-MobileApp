@@ -11,13 +11,12 @@ import { searchElderByUid, createRelationship } from '../../../services/firestor
 const elderIcon = require('../../../../assets/icons/elder.png');
 const searchIcon = require('../../../../assets/icons/search.png');
 const addIcon = require('../../../../assets/icons/plus.png');
-const backIcon = require('../../../../assets/icons/direction/left.png');
 
 // Elder Search Result Interface
 interface ElderSearchResult {
   uid: string;
   name: string;
-  image: any;
+  photoURL: string | null;
 }
 
 type Props = NativeStackScreenProps<RootStackParamList, "AddNewElder">;
@@ -50,7 +49,7 @@ export default function AddNewElder({ navigation }: Props) {
           const elderData: ElderSearchResult = {
             uid: result.data.user.uid,
             name: `${result.data.user.firstName} ${result.data.user.lastName}`,
-            image: require('../../../../assets/icons/elder.png'),
+            photoURL: result.data.user.photoURL ?? null,
           };
           setSearchResults([elderData]);
         } else {
@@ -115,7 +114,7 @@ export default function AddNewElder({ navigation }: Props) {
     return (
       <View key={elder.uid} style={addNewElderStyles.elderCard}>
         <Image
-          source={elder.image}
+          source={elder.photoURL ? { uri: elder.photoURL } : elderIcon}
           style={addNewElderStyles.elderImage}
           resizeMode="cover"
         />
@@ -141,20 +140,6 @@ export default function AddNewElder({ navigation }: Props) {
     <SafeAreaView style={addNewElderStyles.container}>
       {/* Header */}
       <GradientHeader title="Safe & Sound" />
-
-      {/* Back Button */}
-      <TouchableOpacity
-        style={addNewElderStyles.backButton}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-      >
-        <Image
-          source={backIcon}
-          style={addNewElderStyles.backIcon}
-          resizeMode="contain"
-        />
-        <Text style={addNewElderStyles.backText}>Back</Text>
-      </TouchableOpacity>
 
       <ScrollView
         style={addNewElderStyles.scrollContainer}
@@ -221,9 +206,9 @@ export default function AddNewElder({ navigation }: Props) {
           <View style={addNewElderStyles.modalContainer}>
             <View style={addNewElderStyles.modalIconContainer}>
               <Image
-                source={elderIcon}
-                style={addNewElderStyles.modalIcon}
-                resizeMode="contain"
+                source={selectedElder?.photoURL ? { uri: selectedElder.photoURL } : elderIcon}
+                style={selectedElder?.photoURL ? addNewElderStyles.modalProfileImage : addNewElderStyles.modalIcon}
+                resizeMode={selectedElder?.photoURL ? 'cover' : 'contain'}
               />
             </View>
 
@@ -269,12 +254,12 @@ export default function AddNewElder({ navigation }: Props) {
         <View style={addNewElderStyles.modalOverlay}>
           <View style={addNewElderStyles.modalContainer}>
             <View style={addNewElderStyles.successIconContainer}>
-              <Ionicons name="checkmark-circle" size={64} color="#10b981" />
+              <Ionicons name="send" size={64} color="#10b981" />
             </View>
 
-            <Text style={addNewElderStyles.modalTitle}>Success!</Text>
+            <Text style={addNewElderStyles.modalTitle}>Request sent</Text>
             <Text style={addNewElderStyles.modalMessage}>
-              {selectedElder?.name} has been added to your care list.
+              Your request has been sent to {selectedElder?.name}. They will see it in their Caregiver Request tab and can accept or decline.
             </Text>
 
             <TouchableOpacity

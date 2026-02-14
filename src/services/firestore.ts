@@ -708,7 +708,7 @@ export const createRelationship = async (
       caregiverId,
       elderId,
       relationshipType,
-      status: 'active',
+      status: 'pending',
       canViewHealth: true,
       canEditProfile: false,
       canReceiveAlerts: true,
@@ -719,14 +719,6 @@ export const createRelationship = async (
     };
 
     await firestore().collection('relationships').doc(relationshipId).set(relationshipData);
-
-    // Update caregiver's elder count
-    await firestore()
-      .collection('caregivers')
-      .doc(caregiverId)
-      .update({
-        totalEldersCared: firestore.FieldValue.increment(1),
-      });
 
     return {
       success: true,
@@ -1259,10 +1251,22 @@ export const respondToCaregiverRequest = async (
 ): Promise<ServiceResult<void>> => {
   try {
     if (accept) {
+      const relDoc = await firestore().collection('relationships').doc(relationshipId).get();
+      const caregiverId = relDoc.exists ? (relDoc.data() as Relationship).caregiverId : null;
+
       await firestore().collection('relationships').doc(relationshipId).update({
         status: 'active',
-        acceptedAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
       });
+
+      if (caregiverId) {
+        await firestore()
+          .collection('caregivers')
+          .doc(caregiverId)
+          .update({
+            totalEldersCared: firestore.FieldValue.increment(1),
+          });
+      }
     } else {
       await firestore().collection('relationships').doc(relationshipId).delete();
     }
@@ -1271,6 +1275,85 @@ export const respondToCaregiverRequest = async (
     return {
       success: false,
       error: error.message || 'Failed to respond to caregiver request',
+    };
+  }
+};
+
+/**
+ * Listener: caregiver's sent requests (pending + accepted)
+ * For use in caregiver Notification > Elder Accept tab
+ */
+export type CaregiverSentRequest = {
+  id: string;
+  elderId: string;
+  elderName: string;
+  elderPhotoURL: string | null;
+  status: 'pending' | 'active';
+  createdAt: Date;
+};
+
+export const listenToCaregiverSentRequests = (
+  caregiverId: string,
+  onRequestsUpdate: (requests: CaregiverSentRequest[]) => void,
+  onError: (error: string) => void
+) => {
+  const unsubscribe = firestore()
+    .collection('relationships')
+    .where('caregiverId', '==', caregiverId)
+    .where('status', 'in', ['pending', 'active'])
+    .onSnapshot(
+      async (snapshot) => {
+        const requests: CaregiverSentRequest[] = await Promise.all(
+          snapshot.docs.map(async (doc) => {
+            const data = doc.data() as Relationship;
+            const elderProfile = await getUserProfile(data.elderId);
+            const user = elderProfile.success && elderProfile.data ? elderProfile.data : null;
+            const createdAt = data.createdAt as FirebaseFirestoreTypes.Timestamp;
+            return {
+              id: doc.id,
+              elderId: data.elderId,
+              elderName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
+              elderPhotoURL: user?.photoURL ?? null,
+              status: data.status,
+              createdAt: createdAt?.toDate?.() || new Date(),
+            };
+          })
+        );
+        // Pending first, then accepted; within each, newest first
+        requests.sort((a, b) => {
+          if (a.status !== b.status) return a.status === 'pending' ? -1 : 1;
+          return b.createdAt.getTime() - a.createdAt.getTime();
+        });
+        onRequestsUpdate(requests);
+      },
+      (error) => {
+        onError(error.message || 'Failed to load sent requests');
+      }
+    );
+  return unsubscribe;
+};
+
+/**
+ * Cancel a pending request (caregiver cancels before elder accepts)
+ */
+export const cancelCaregiverRequest = async (
+  relationshipId: string
+): Promise<ServiceResult<void>> => {
+  try {
+    const doc = await firestore().collection('relationships').doc(relationshipId).get();
+    if (!doc.exists) {
+      return { success: false, error: 'Request not found' };
+    }
+    const data = doc.data() as Relationship;
+    if (data.status !== 'pending') {
+      return { success: false, error: 'Only pending requests can be cancelled' };
+    }
+    await firestore().collection('relationships').doc(relationshipId).delete();
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to cancel request',
     };
   }
 };
@@ -1411,7 +1494,7 @@ export const deleteRelationship = async (
       title: 'Relationship Removed',
       message: notificationMessage,
       read: false,
-      createdAt: firestore.FieldValue.serverTimestamp(),
+      timestamp: firestore.FieldValue.serverTimestamp(),
     });
 
     // Notify elder
@@ -1421,7 +1504,7 @@ export const deleteRelationship = async (
       title: 'Relationship Removed',
       message: notificationMessage,
       read: false,
-      createdAt: firestore.FieldValue.serverTimestamp(),
+      timestamp: firestore.FieldValue.serverTimestamp(),
     });
 
     return { success: true };

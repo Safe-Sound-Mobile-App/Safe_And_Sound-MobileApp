@@ -44,12 +44,12 @@ export default function CaregiverNotification({ navigation }: Props) {
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
+  // Elder Accept tab: always listen to sent requests (no index needed)
   useEffect(() => {
     const currentUser = auth().currentUser;
     if (!currentUser) {
       Alert.alert('Error', 'No authenticated user');
       setLoadingElderAccept(false);
-      setLoadingActivities(false);
       return;
     }
 
@@ -65,6 +65,19 @@ export default function CaregiverNotification({ navigation }: Props) {
       }
     );
 
+    return () => unsubSent();
+  }, []);
+
+  // Activities tab: only subscribe when user opens that tab (uses notifications index)
+  useEffect(() => {
+    if (activeTab !== 'activities') return;
+
+    const currentUser = auth().currentUser;
+    if (!currentUser) {
+      setLoadingActivities(false);
+      return;
+    }
+
     const unsubNotifs = listenToNotifications(
       currentUser.uid,
       (newNotifications) => {
@@ -74,15 +87,12 @@ export default function CaregiverNotification({ navigation }: Props) {
       (error) => {
         console.error('Notifications error:', error);
         setLoadingActivities(false);
-        Alert.alert('Error', error);
+        setNotifications([]);
       }
     );
 
-    return () => {
-      unsubSent();
-      unsubNotifs();
-    };
-  }, []);
+    return () => unsubNotifs();
+  }, [activeTab]);
 
   const activityNotifs = notifications.filter((n) => n.type !== 'elder_accept');
 

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Image, Alert, Animated, Dimensions } from 'react-native';
+import { View, TouchableOpacity, Image, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { navbarStyles } from './styles/AppNavigatorStyles';
+import { useNotificationBadge } from '../contexts/NotificationBadgeContext';
 
 // Import icons
 const homeIcon = require('../../assets/icons/navbar/home.png');
@@ -24,8 +25,10 @@ const navItems: NavItem[] = [
   { name: 'Settings', icon: settingsIcon, route: 'CaregiverSetting', isImplemented: true },
 ];
 
+const NOTIFICATION_TAB_INDEX = 1;
+
 export default function BottomNavbar({ state, navigation }: BottomTabBarProps) {
-  // Animated value for sliding effect
+  const { hasNew } = useNotificationBadge();
   const slideAnim = useRef(new Animated.Value(state.index)).current;
 
   // Animate when active tab changes
@@ -133,6 +136,10 @@ export default function BottomNavbar({ state, navigation }: BottomTabBarProps) {
                   ]}
                   resizeMode="contain"
                 />
+                {/* Red dot: only when there's new content AND user is not already on Notification tab */}
+                {index === NOTIFICATION_TAB_INDEX && hasNew && state.index !== NOTIFICATION_TAB_INDEX && (
+                  <View style={navbarStyles.notificationBadge} />
+                )}
               </View>
             </TouchableOpacity>
           );

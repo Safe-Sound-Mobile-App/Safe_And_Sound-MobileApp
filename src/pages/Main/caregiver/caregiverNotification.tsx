@@ -179,14 +179,14 @@ export default function CaregiverNotification({ navigation }: Props) {
       />
       <View style={notificationStyles.sentRequestInfo}>
         <Text style={notificationStyles.sentRequestName}>{request.elderName}</Text>
+        <Text style={notificationStyles.sentRequestMeta}>
+          {request.createdAt.toLocaleDateString()} {request.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </Text>
         <View style={[notificationStyles.statusBadge, request.status === 'pending' ? notificationStyles.statusPending : notificationStyles.statusAccepted]}>
           <Text style={[notificationStyles.statusBadgeText, { color: request.status === 'pending' ? '#92400e' : '#065f46' }]}>
             {request.status === 'pending' ? 'Pending' : 'Accepted'}
           </Text>
         </View>
-        <Text style={notificationStyles.sentRequestMeta}>
-          {request.createdAt.toLocaleDateString()} {request.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </Text>
       </View>
       {request.status === 'pending' && (
         <TouchableOpacity

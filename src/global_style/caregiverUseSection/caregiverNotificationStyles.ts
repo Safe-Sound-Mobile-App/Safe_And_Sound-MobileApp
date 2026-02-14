@@ -175,6 +175,7 @@ export const notificationStyles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     alignSelf: 'flex-start',
+    marginTop: 6,
   },
   statusPending: {
     backgroundColor: '#fef3c7',

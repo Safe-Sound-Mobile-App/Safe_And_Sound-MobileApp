@@ -70,6 +70,18 @@ export const navbarStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10, // Above circle
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 10,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#ef4444',
+    borderWidth: 2,
+    borderColor: '#ffffff',
   },
   navIcon: {
     width: 24,

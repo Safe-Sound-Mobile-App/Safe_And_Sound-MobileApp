@@ -8,6 +8,7 @@ import BottomNavbar from "./navigation/BottomNavbar";
 import auth from "@react-native-firebase/auth";
 import { getUserProfile } from "./services/firestore";
 import { AccessibilityProvider } from "./contexts/AccessibilityContext";
+import { NotificationBadgeProvider } from "./contexts/NotificationBadgeContext";
 
 // Authentication screens (no navbar)
 import Home from "./pages/Authentication/general/HomePage";
@@ -235,7 +236,8 @@ export default function App() {
 
   return (
     <AccessibilityProvider>
-      <NavigationContainer linking={linking}>
+      <NotificationBadgeProvider>
+        <NavigationContainer linking={linking}>
         <Stack.Navigator
           initialRouteName={getInitialRouteName()}
           screenOptions={{
@@ -276,7 +278,8 @@ export default function App() {
           <Stack.Screen name="HelpSupport" component={HelpSupportPage} options={{ presentation: 'card'}}/>
           <Stack.Screen name="About" component={AboutPage} options={{ presentation: 'card'}}/>
         </Stack.Navigator>
-      </NavigationContainer>
+        </NavigationContainer>
+      </NotificationBadgeProvider>
     </AccessibilityProvider>
   );
 }

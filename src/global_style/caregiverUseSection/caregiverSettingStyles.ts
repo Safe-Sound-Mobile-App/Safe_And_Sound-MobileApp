@@ -24,7 +24,7 @@ export const caregiverSettingStyles = StyleSheet.create({
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 16,
-    marginBottom: 100, // Space for navbar
+    marginBottom: 30, // Space for navbar
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

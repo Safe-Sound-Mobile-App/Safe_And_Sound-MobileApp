@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, SafeAreaView, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import GradientHeader from '../../header/GradientHeader';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../App";
@@ -22,11 +23,7 @@ export default function CaregiverAccountManagePage({ navigation }: Props) {
   const [elders, setElders] = useState<ElderItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchElders();
-  }, []);
-
-  const fetchElders = async () => {
+  const fetchElders = useCallback(async () => {
     try {
       const currentUser = auth().currentUser;
       if (!currentUser) return;
@@ -54,7 +51,14 @@ export default function CaregiverAccountManagePage({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchElders();
+    }, [fetchElders])
+  );
 
   const handleRemoveElder = (elder: ElderItem) => {
     Alert.alert(

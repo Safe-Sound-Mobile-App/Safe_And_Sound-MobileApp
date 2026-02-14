@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -14,6 +14,7 @@ import {
   Alert
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { caregiverHomeStyles, createCaregiverHomeStyles } from '../../../global_style/caregiverUseSection/caregiverHomeStyles';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
@@ -87,61 +88,65 @@ export default function CaregiverHomepage({ navigation }: Props) {
   const animationRefs = useRef<{[key: string]: Animated.Value}>({});
   
   // Fetch elders data from Firestore
-  useEffect(() => {
-    const fetchElders = async () => {
-      try {
-        const currentUser = auth().currentUser;
-        if (!currentUser) {
-          Alert.alert('Error', 'No authenticated user found');
-          setLoading(false);
-          return;
-        }
-
-        // Get elders that this caregiver is caring for
-        const eldersResult = await getCaregiverElders(currentUser.uid);
-        
-        if (eldersResult.success && eldersResult.data) {
-          // Transform Elder data to ElderData format
-          const transformedData: ElderData[] = await Promise.all(
-            eldersResult.data.map(async (elder) => {
-              // Get user info (firstName, lastName, photoURL)
-              const userResult = await getUserProfile(elder.userId);
-              const userName = userResult.success && userResult.data 
-                ? `${userResult.data.firstName} ${userResult.data.lastName}`
-                : 'Unknown';
-              
-              // Use photoURL if available, otherwise use default icon
-              const profileImage = userResult.success && userResult.data?.photoURL
-                ? { uri: userResult.data.photoURL }
-                : require('../../../../assets/icons/elder.png');
-
-              return {
-                id: elder.userId,
-                name: userName,
-                image: profileImage,
-                risk: elder.currentHealthStatus.risk,
-                gyroscope: elder.currentHealthStatus.gyroscope,
-                heartRate: elder.currentHealthStatus.heartRate,
-                spO2: elder.currentHealthStatus.spO2,
-              };
-            })
-          );
-
-          setElderData(transformedData);
-        } else {
-          // No elders found or error
-          setElderData([]);
-        }
-      } catch (error) {
-        console.error('Error fetching elders:', error);
-        Alert.alert('Error', 'Failed to load elder data');
-      } finally {
+  const fetchElders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'No authenticated user found');
         setLoading(false);
+        return;
       }
-    };
 
-    fetchElders();
+      // Get elders that this caregiver is caring for
+      const eldersResult = await getCaregiverElders(currentUser.uid);
+      
+      if (eldersResult.success && eldersResult.data) {
+        // Transform Elder data to ElderData format
+        const transformedData: ElderData[] = await Promise.all(
+          eldersResult.data.map(async (elder) => {
+            // Get user info (firstName, lastName, photoURL)
+            const userResult = await getUserProfile(elder.userId);
+            const userName = userResult.success && userResult.data 
+              ? `${userResult.data.firstName} ${userResult.data.lastName}`
+              : 'Unknown';
+            
+            // Use photoURL if available, otherwise use default icon
+            const profileImage = userResult.success && userResult.data?.photoURL
+              ? { uri: userResult.data.photoURL }
+              : require('../../../../assets/icons/elder.png');
+
+            return {
+              id: elder.userId,
+              name: userName,
+              image: profileImage,
+              risk: elder.currentHealthStatus.risk,
+              gyroscope: elder.currentHealthStatus.gyroscope,
+              heartRate: elder.currentHealthStatus.heartRate,
+              spO2: elder.currentHealthStatus.spO2,
+            };
+          })
+        );
+
+        setElderData(transformedData);
+      } else {
+        // No elders found or error
+        setElderData([]);
+      }
+    } catch (error) {
+      console.error('Error fetching elders:', error);
+      Alert.alert('Error', 'Failed to load elder data');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchElders();
+    }, [fetchElders])
+  );
 
   // Listen to emergency alerts
   useEffect(() => {

@@ -36,6 +36,7 @@
       ],
       "@react-native-firebase/auth",
       "@react-native-firebase/crashlytics",
+      "expo-notifications",
       [
         "expo-build-properties",
         {

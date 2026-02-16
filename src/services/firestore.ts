@@ -720,6 +720,22 @@ export const createRelationship = async (
 
     await firestore().collection('relationships').doc(relationshipId).set(relationshipData);
 
+    // Notify elder so they get a push: "X wants to add you as caregiver"
+    const caregiverProfile = await getUserProfile(caregiverId);
+    const caregiverName =
+      caregiverProfile.success && caregiverProfile.data
+        ? `${caregiverProfile.data.firstName} ${caregiverProfile.data.lastName}`.trim() || 'A caregiver'
+        : 'A caregiver';
+    await firestore().collection('notifications').add({
+      userId: elderId,
+      type: 'caregiver_request',
+      title: 'Caregiver Request',
+      message: `${caregiverName} wants to add you as their elder.`,
+      read: false,
+      timestamp: firestore.FieldValue.serverTimestamp(),
+      pushSent: false,
+    });
+
     return {
       success: true,
       data: relationshipData,
@@ -1053,6 +1069,7 @@ export const sendEmergencyAlert = async (
         relatedId: alertRef.id,
         timestamp: firestore.FieldValue.serverTimestamp(),
         read: false,
+        pushSent: false,
       });
     });
 
@@ -1283,12 +1300,35 @@ export const respondToCaregiverRequest = async (
 ): Promise<ServiceResult<void>> => {
   try {
     if (accept) {
+      const relDoc = await firestore().collection('relationships').doc(relationshipId).get();
+      const relData = relDoc.exists ? (relDoc.data() as Relationship) : null;
+      const caregiverId = relData?.caregiverId;
+      const elderId = relData?.elderId;
+
       await firestore().collection('relationships').doc(relationshipId).update({
         status: 'active',
         updatedAt: firestore.FieldValue.serverTimestamp(),
       });
       // Note: totalEldersCared is synced when caregiver loads their elders (syncCaregiverElderCount)
       // so we don't need elder to write to caregivers doc (would cause permission-denied).
+
+      // Notify caregiver so they get a push: "X accepted your request"
+      if (caregiverId && elderId) {
+        const elderProfile = await getUserProfile(elderId);
+        const elderName =
+          elderProfile.success && elderProfile.data
+            ? `${elderProfile.data.firstName} ${elderProfile.data.lastName}`.trim() || 'An elder'
+            : 'An elder';
+        await firestore().collection('notifications').add({
+          userId: caregiverId,
+          type: 'elder_accept',
+          title: 'Request Accepted',
+          message: `${elderName} accepted your caregiver request.`,
+          read: false,
+          timestamp: firestore.FieldValue.serverTimestamp(),
+          pushSent: false,
+        });
+      }
     } else {
       await firestore().collection('relationships').doc(relationshipId).delete();
     }
@@ -1517,6 +1557,7 @@ export const deleteRelationship = async (
       message: notificationMessage,
       read: false,
       timestamp: firestore.FieldValue.serverTimestamp(),
+      pushSent: false,
     });
 
     // Notify elder
@@ -1527,6 +1568,7 @@ export const deleteRelationship = async (
       message: notificationMessage,
       read: false,
       timestamp: firestore.FieldValue.serverTimestamp(),
+      pushSent: false,
     });
 
     return { success: true };

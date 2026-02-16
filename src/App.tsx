@@ -7,6 +7,7 @@ import { ActivityIndicator, View } from "react-native";
 import BottomNavbar from "./navigation/BottomNavbar";
 import auth from "@react-native-firebase/auth";
 import { getUserProfile } from "./services/firestore";
+import { registerForPushNotifications } from "./services/messaging";
 import { AccessibilityProvider } from "./contexts/AccessibilityContext";
 import { NotificationBadgeProvider } from "./contexts/NotificationBadgeContext";
 
@@ -201,6 +202,8 @@ export default function App() {
         } else {
           setUserRole(null);
         }
+        // Register for push notifications (FCM token saved to Firestore)
+        registerForPushNotifications().catch(() => {});
       } else {
         // User is logged out
         setUserRole(null);

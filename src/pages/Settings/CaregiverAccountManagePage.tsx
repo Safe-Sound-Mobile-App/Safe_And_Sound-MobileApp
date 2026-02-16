@@ -78,8 +78,9 @@ export default function CaregiverAccountManagePage({ navigation }: Props) {
               
               if (result.success) {
                 Alert.alert('Success', `Removed ${elder.name} successfully`);
-                // Refresh the list
                 fetchElders();
+                // Open Notification > Activities so user sees "Relationship Removed" right away
+                navigation.navigate('MainTabs', { screen: 'Notification', params: { openActivities: true } });
               } else {
                 Alert.alert('Error', result.error || 'Failed to remove elder');
               }

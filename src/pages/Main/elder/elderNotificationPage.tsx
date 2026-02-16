@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Image, Modal, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,9 +28,17 @@ type Props = {
     navigation: CombinedNavigationProp;
 };
 
+type ElderNotificationRouteParams = { openActivities?: boolean };
+
 export default function ElderNotification({ navigation }: Props) {
-    // Tabs: 'caregiver_request' or 'activities'
+    const route = useRoute<RouteProp<{ params: ElderNotificationRouteParams }, 'params'>>();
     const [activeTab, setActiveTab] = useState<'caregiver_request' | 'activities'>('caregiver_request');
+
+    // When navigated here after delete, open Activities tab so "Relationship Removed" is visible
+    useEffect(() => {
+        const openActivities = (route.params as ElderNotificationRouteParams)?.openActivities;
+        if (openActivities) setActiveTab('activities');
+    }, [route.params]);
 
     // Data States
     const [requests, setRequests] = useState<Array<{ id: string; caregiverId: string; caregiverName: string; caregiverPhotoURL: string | null }>>([]);
@@ -173,6 +182,8 @@ export default function ElderNotification({ navigation }: Props) {
     const renderActivityBadge = (notif: Notification) => {
         const handleTap = async () => {
             if (!notif.read) {
+                // Update UI immediately so red dot disappears without waiting for listener
+                setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, read: true } : n));
                 await markNotificationAsRead(notif.id);
             }
         };

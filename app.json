@@ -4,24 +4,27 @@
     "slug": "Safe_And_Sound-MobileApp",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/favicon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/favicon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
       "googleServicesFile": "./GoogleService-Info.plist",
       "bundleIdentifier": "com.safeandsound.app",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "googleServicesFile": "./google-services.json",
       "package": "com.safeandsound.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/favicon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true
@@ -37,6 +40,16 @@
       "@react-native-firebase/auth",
       "@react-native-firebase/crashlytics",
       "expo-notifications",
+      [
+        "expo-navigation-bar",
+        {
+          "position": "absolute",
+          "visibility": "visible",
+          "behavior": "insets",
+          "backgroundColor": "#FFFFFF",
+          "barStyle": "dark-content"
+        }
+      ],
       [
         "expo-build-properties",
         {
@@ -54,7 +67,7 @@
         "projectId": "86decaf3-633d-45a8-bc39-99fbb39e5479"
       }
     },
-    "owner": "tagch",
+    "owner": "safe-and-sound",
     "updates": {
       "url": "https://u.expo.dev/86decaf3-633d-45a8-bc39-99fbb39e5479"
     },

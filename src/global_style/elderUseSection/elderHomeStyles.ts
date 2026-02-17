@@ -73,6 +73,12 @@ export const elderHomeStyles = StyleSheet.create({
         borderRadius: 30,
         backgroundColor: '#d1d5db', // Gray circle placeholder
     },
+    avatar: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#d1d5db', // Fallback background color
+    },
     infoContainer: {
         flex: 1,
         justifyContent: 'center',

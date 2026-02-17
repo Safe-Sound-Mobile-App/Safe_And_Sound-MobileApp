@@ -3,11 +3,13 @@ import { useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, View, Platform } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as NavigationBar from "expo-navigation-bar";
 import BottomNavbar from "./navigation/BottomNavbar";
 import auth from "@react-native-firebase/auth";
 import { getUserProfile } from "./services/firestore";
-import { registerForPushNotifications } from "./services/messaging";
+import { registerForPushNotifications, setupFCMHandlers } from "./services/messaging";
 import { AccessibilityProvider } from "./contexts/AccessibilityContext";
 import { NotificationBadgeProvider } from "./contexts/NotificationBadgeContext";
 
@@ -188,6 +190,30 @@ export default function App() {
   const [user, setUser] = useState<any>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
 
+  // Set navigation bar to transparent background with dark buttons
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      // Use rgba format for transparent background
+      NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
+      NavigationBar.setButtonStyleAsync('dark'); // This makes the buttons dark gray
+    }
+  }, []);
+
+  // Setup FCM handlers once when app starts
+  useEffect(() => {
+    let cleanup: (() => void) | null = null;
+    
+    setupFCMHandlers().then((cleanupFn) => {
+      cleanup = cleanupFn;
+    }).catch((error) => {
+      console.error('Failed to setup FCM handlers:', error);
+    });
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
+
   // Auth state listener
   useEffect(() => {
     const subscriber = auth().onAuthStateChanged(async (firebaseUser) => {
@@ -238,9 +264,10 @@ export default function App() {
   };
 
   return (
-    <AccessibilityProvider>
-      <NotificationBadgeProvider>
-        <NavigationContainer linking={linking}>
+    <SafeAreaProvider>
+      <AccessibilityProvider>
+        <NotificationBadgeProvider>
+          <NavigationContainer linking={linking}>
         <Stack.Navigator
           initialRouteName={getInitialRouteName()}
           screenOptions={{
@@ -281,8 +308,9 @@ export default function App() {
           <Stack.Screen name="HelpSupport" component={HelpSupportPage} options={{ presentation: 'card'}}/>
           <Stack.Screen name="About" component={AboutPage} options={{ presentation: 'card'}}/>
         </Stack.Navigator>
-        </NavigationContainer>
-      </NotificationBadgeProvider>
-    </AccessibilityProvider>
+          </NavigationContainer>
+        </NotificationBadgeProvider>
+      </AccessibilityProvider>
+    </SafeAreaProvider>
   );
 }

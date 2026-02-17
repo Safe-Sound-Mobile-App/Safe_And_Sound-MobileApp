@@ -61,6 +61,15 @@ service cloud.firestore {
       allow write: if isOwner(elderId);
     }
     
+    // Helper function to check if user is participant in chat
+    function isChatParticipant(chatId) {
+      let chatDoc = get(/databases/$(database)/documents/chats/$(chatId));
+      return chatDoc != null && chatDoc.data != null && chatDoc.data.participants != null && (
+        chatDoc.data.participants.caregiverId == request.auth.uid ||
+        chatDoc.data.participants.elderId == request.auth.uid
+      );
+    }
+    
     // Chats collection
     match /chats/{chatId} {
       allow read: if isAuthenticated() && (
@@ -75,12 +84,19 @@ service cloud.firestore {
       
       // Chat messages subcollection
       match /messages/{messageId} {
+        // Allow read if user is authenticated and either:
+        // 1. Chat doesn't exist yet (for empty chats - will be created when first message is sent)
+        // 2. User is participant in the chat
         allow read: if isAuthenticated() && (
-          get(/databases/$(database)/documents/chats/$(chatId)).data.participants.caregiverId == request.auth.uid ||
-          get(/databases/$(database)/documents/chats/$(chatId)).data.participants.elderId == request.auth.uid
+          !exists(/databases/$(database)/documents/chats/$(chatId)) ||
+          isChatParticipant(chatId)
         );
+        // Allow create if user is authenticated
+        // Note: senderId validation is done in the application code
+        // We allow any authenticated user to create messages
         allow create: if isAuthenticated();
-        allow update: if isAuthenticated();
+        allow update: if false; // Messages should not be updated
+        allow delete: if false; // Messages should not be deleted
       }
     }
     

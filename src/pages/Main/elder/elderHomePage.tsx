@@ -214,7 +214,11 @@ export default function ElderHomepage({ navigation }: Props) {
         return (
             <View key={caregiver.id} style={styles.card}>
                 <View style={styles.avatarContainer}>
-                    <View style={styles.avatarPlaceholder} />
+                    <Image
+                        source={caregiver.image}
+                        style={styles.avatar}
+                        resizeMode="cover"
+                    />
                 </View>
 
                 <View style={styles.infoContainer}>

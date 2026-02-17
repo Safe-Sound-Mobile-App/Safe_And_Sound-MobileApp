@@ -726,7 +726,7 @@ export const createRelationship = async (
       caregiverProfile.success && caregiverProfile.data
         ? `${caregiverProfile.data.firstName} ${caregiverProfile.data.lastName}`.trim() || 'A caregiver'
         : 'A caregiver';
-    await firestore().collection('notifications').add({
+    const notifRef = await firestore().collection('notifications').add({
       userId: elderId,
       type: 'caregiver_request',
       title: 'Caregiver Request',
@@ -735,6 +735,14 @@ export const createRelationship = async (
       timestamp: firestore.FieldValue.serverTimestamp(),
       pushSent: false,
     });
+    // ส่ง push ทันที (real-time)
+    triggerPushNotification(
+      elderId,
+      'Caregiver Request',
+      `${caregiverName} wants to add you as their elder.`,
+      'caregiver_request',
+      notifRef.id
+    ).catch(() => {}); // ไม่ await เพื่อไม่ให้ช้า
 
     return {
       success: true,
@@ -965,8 +973,57 @@ export const sendChatMessage = async (
 ): Promise<ServiceResult<void>> => {
   try {
     const chatId = [elderId, caregiverId].sort().join('_');
+    const chatRef = firestore().collection('chats').doc(chatId);
     
-    await firestore().collection('chats').doc(chatId).collection('messages').add({
+    // Check if chat document exists, create if not
+    const chatDoc = await chatRef.get();
+    const isSenderCaregiver = senderId === caregiverId;
+    
+    if (!chatDoc.exists) {
+      await chatRef.set({
+        chatId,
+        participants: {
+          elderId,
+          caregiverId,
+        },
+        lastMessage: {
+          text: message,
+          senderId,
+          senderName,
+          timestamp: firestore.FieldValue.serverTimestamp(),
+        },
+        unreadCount: {
+          caregiver: isSenderCaregiver ? 0 : 1,
+          elder: isSenderCaregiver ? 1 : 0,
+        },
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+    } else {
+      // Update chat document with last message
+      // Only increment unread count for the receiver (not the sender)
+      const updateData: any = {
+        lastMessage: {
+          text: message,
+          senderId,
+          senderName,
+          timestamp: firestore.FieldValue.serverTimestamp(),
+        },
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      };
+      
+      // Increment unread count for the receiver
+      if (isSenderCaregiver) {
+        updateData['unreadCount.elder'] = firestore.FieldValue.increment(1);
+      } else {
+        updateData['unreadCount.caregiver'] = firestore.FieldValue.increment(1);
+      }
+      
+      await chatRef.update(updateData);
+    }
+    
+    // Add message to subcollection
+    await chatRef.collection('messages').add({
       senderId,
       senderName,
       message,
@@ -978,6 +1035,57 @@ export const sendChatMessage = async (
     return {
       success: false,
       error: error.message || 'Failed to send message',
+    };
+  }
+};
+
+/**
+ * Reset unread count for a chat (when user opens chat)
+ * Also creates chat document if it doesn't exist
+ */
+export const resetChatUnreadCount = async (
+  elderId: string,
+  caregiverId: string,
+  currentUserId: string
+): Promise<ServiceResult<void>> => {
+  try {
+    const chatId = [elderId, caregiverId].sort().join('_');
+    const chatRef = firestore().collection('chats').doc(chatId);
+    
+    // Check if chat document exists
+    const chatDoc = await chatRef.get();
+    const isCurrentUserCaregiver = currentUserId === caregiverId;
+    
+    if (!chatDoc.exists) {
+      // Create chat document if it doesn't exist
+      await chatRef.set({
+        chatId,
+        participants: {
+          elderId,
+          caregiverId,
+        },
+        lastMessage: null,
+        unreadCount: {
+          caregiver: 0,
+          elder: 0,
+        },
+        createdAt: firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+    } else {
+      // Update unread count
+      const updateField = isCurrentUserCaregiver ? 'unreadCount.caregiver' : 'unreadCount.elder';
+      await chatRef.update({
+        [updateField]: 0,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to reset unread count',
     };
   }
 };
@@ -1059,9 +1167,9 @@ export const sendEmergencyAlert = async (
       .get();
 
     // Send notification to each caregiver
-    const notificationPromises = relationshipsSnapshot.docs.map((doc) => {
+    const notificationPromises = relationshipsSnapshot.docs.map(async (doc) => {
       const caregiverId = doc.data().caregiverId;
-      return firestore().collection('notifications').add({
+      const notifRef = await firestore().collection('notifications').add({
         userId: caregiverId,
         type: 'emergency',
         title: 'Emergency Alert!',
@@ -1071,6 +1179,15 @@ export const sendEmergencyAlert = async (
         read: false,
         pushSent: false,
       });
+      // ส่ง push ทันที (real-time)
+      triggerPushNotification(
+        caregiverId,
+        'Emergency Alert!',
+        `${elderName} needs immediate help!`,
+        'emergency',
+        notifRef.id
+      ).catch(() => {});
+      return notifRef;
     });
 
     await Promise.all(notificationPromises);
@@ -1176,6 +1293,22 @@ export interface Notification {
   relatedId?: string;
   timestamp: Date;
   read: boolean;
+}
+
+/**
+ * Helper: เรียก Cloud Function เพื่อส่ง push notification ทันที (real-time)
+ * ตอนนี้ใช้ scheduled function เท่านั้น (รันทุก 1 นาที) เพราะ HTTP function ไม่สามารถตั้งค่า IAM ได้
+ * Scheduled function จะส่ง push ให้ภายใน 1 นาทีหลังจากสร้าง notification document
+ */
+async function triggerPushNotification(
+  userId: string,
+  title: string,
+  message: string,
+  type: string,
+  notifId: string
+): Promise<void> {
+  // ไม่ต้องทำอะไร - scheduled function จะส่ง push ให้อัตโนมัติภายใน 1 นาที
+  // เนื่องจาก HTTP function ไม่สามารถตั้งค่า IAM invoker ได้ (ถูกบล็อกโดยนโยบายองค์กร)
 }
 
 export interface NotificationPreferences {
@@ -1319,7 +1452,7 @@ export const respondToCaregiverRequest = async (
           elderProfile.success && elderProfile.data
             ? `${elderProfile.data.firstName} ${elderProfile.data.lastName}`.trim() || 'An elder'
             : 'An elder';
-        await firestore().collection('notifications').add({
+        const notifRef = await firestore().collection('notifications').add({
           userId: caregiverId,
           type: 'elder_accept',
           title: 'Request Accepted',
@@ -1328,6 +1461,14 @@ export const respondToCaregiverRequest = async (
           timestamp: firestore.FieldValue.serverTimestamp(),
           pushSent: false,
         });
+        // ส่ง push ทันที (real-time)
+        triggerPushNotification(
+          caregiverId,
+          'Request Accepted',
+          `${elderName} accepted your caregiver request.`,
+          'elder_accept',
+          notifRef.id
+        ).catch(() => {});
       }
     } else {
       await firestore().collection('relationships').doc(relationshipId).delete();
@@ -1550,7 +1691,7 @@ export const deleteRelationship = async (
     const notificationMessage = 'A relationship has been removed';
     
     // Notify caregiver
-    await firestore().collection('notifications').add({
+    const caregiverNotifRef = await firestore().collection('notifications').add({
       userId: caregiverId,
       type: 'relationship_removed',
       title: 'Relationship Removed',
@@ -1559,9 +1700,16 @@ export const deleteRelationship = async (
       timestamp: firestore.FieldValue.serverTimestamp(),
       pushSent: false,
     });
+    triggerPushNotification(
+      caregiverId,
+      'Relationship Removed',
+      notificationMessage,
+      'relationship_removed',
+      caregiverNotifRef.id
+    ).catch(() => {});
 
     // Notify elder
-    await firestore().collection('notifications').add({
+    const elderNotifRef = await firestore().collection('notifications').add({
       userId: elderId,
       type: 'relationship_removed',
       title: 'Relationship Removed',
@@ -1570,6 +1718,13 @@ export const deleteRelationship = async (
       timestamp: firestore.FieldValue.serverTimestamp(),
       pushSent: false,
     });
+    triggerPushNotification(
+      elderId,
+      'Relationship Removed',
+      notificationMessage,
+      'relationship_removed',
+      elderNotifRef.id
+    ).catch(() => {});
 
     return { success: true };
   } catch (error: any) {

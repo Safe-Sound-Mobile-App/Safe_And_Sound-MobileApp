@@ -2,30 +2,35 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
-    SafeAreaView,
     FlatList,
     TextInput,
     TouchableOpacity,
     KeyboardAvoidingView,
     Platform,
     Alert,
+    ActivityIndicator,
+    Keyboard,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
 import auth from '@react-native-firebase/auth';
-import { sendChatMessage, listenToChatMessages, getUserProfile, ChatMessage } from '../../../services/firestore';
+import { sendChatMessage, listenToChatMessages, getUserProfile, ChatMessage, resetChatUnreadCount } from '../../../services/firestore';
 
 type Props = NativeStackScreenProps<RootStackParamList, "ElderChatPage">;
 
 export default function ElderChatPage({ route, navigation }: Props) {
     const { caregiverId, caregiverName } = route.params as { caregiverId: string; caregiverName: string };
+    const insets = useSafeAreaInsets();
     
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputText, setInputText] = useState('');
     const [sending, setSending] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [currentUserName, setCurrentUserName] = useState('');
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
     const flatListRef = useRef<FlatList>(null);
 
     useEffect(() => {
@@ -45,24 +50,52 @@ export default function ElderChatPage({ route, navigation }: Props) {
         };
         fetchUserName();
 
+        // Create chat document and reset unread count when opening chat
+        resetChatUnreadCount(currentUser.uid, caregiverId, currentUser.uid).catch((error) => {
+            console.warn('Failed to create/reset chat:', error);
+        });
+
         // Listen to chat messages
         const unsubscribe = listenToChatMessages(
             currentUser.uid,
             caregiverId,
             (newMessages) => {
                 setMessages(newMessages);
+                setLoading(false);
                 // Auto-scroll to bottom when new message arrives
                 setTimeout(() => {
                     flatListRef.current?.scrollToEnd({ animated: true });
                 }, 100);
             },
             (error) => {
+                console.error('Chat error:', error);
+                setLoading(false);
                 Alert.alert('Error', error);
             }
         );
 
         return () => unsubscribe();
     }, [caregiverId]);
+
+    // Track keyboard height for Android to maintain consistent position
+    useEffect(() => {
+        if (Platform.OS === 'android') {
+            const showSubscription = Keyboard.addListener('keyboardDidShow', (e) => {
+                setKeyboardHeight(e.endCoordinates.height);
+            });
+            const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+                setKeyboardHeight(0);
+            });
+
+            return () => {
+                showSubscription.remove();
+                hideSubscription.remove();
+            };
+        }
+    }, []);
+
+    // Handle keyboard events for Android - removed manual handling
+    // Using KeyboardAvoidingView with adjustResize from AndroidManifest.xml
 
     const handleSend = async () => {
         const currentUser = auth().currentUser;
@@ -125,7 +158,7 @@ export default function ElderChatPage({ route, navigation }: Props) {
     };
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }} edges={['bottom']}>
             <GradientHeader />
             
             {/* Chat Header */}
@@ -144,62 +177,177 @@ export default function ElderChatPage({ route, navigation }: Props) {
                 </Text>
             </View>
 
-            {/* Messages List */}
-            <FlatList
-                ref={flatListRef}
-                data={messages}
-                renderItem={renderMessage}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={{ paddingVertical: 8 }}
-                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            />
+            {Platform.OS === 'ios' ? (
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior="padding"
+                    keyboardVerticalOffset={90}
+                >
+                    <View style={{ flex: 1 }}>
+                        {/* Messages List */}
+                        {loading ? (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <ActivityIndicator size="large" color="#008080" />
+                                <Text style={{ marginTop: 12, color: '#6b7280', fontSize: 14 }}>
+                                    Loading messages...
+                                </Text>
+                            </View>
+                        ) : messages.length === 0 ? (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+                                <Ionicons name="chatbubbles-outline" size={64} color="#d1d5db" />
+                                <Text style={{ marginTop: 16, color: '#6b7280', fontSize: 16, fontWeight: '600' }}>
+                                    No messages yet
+                                </Text>
+                                <Text style={{ marginTop: 8, color: '#9ca3af', fontSize: 14, textAlign: 'center' }}>
+                                    Start a conversation with {caregiverName}
+                                </Text>
+                            </View>
+                        ) : (
+                            <FlatList
+                                ref={flatListRef}
+                                data={messages}
+                                renderItem={renderMessage}
+                                keyExtractor={(item) => item.id}
+                                contentContainerStyle={{ paddingVertical: 8 }}
+                                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                                keyboardShouldPersistTaps="handled"
+                                style={{ flex: 1 }}
+                            />
+                        )}
 
-            {/* Input Area */}
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                keyboardVerticalOffset={90}
-            >
-                <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    padding: 12,
-                    borderTopWidth: 1,
-                    borderTopColor: '#e5e7eb',
-                    backgroundColor: '#fff',
-                }}>
-                    <TextInput
-                        style={{
-                            flex: 1,
-                            backgroundColor: '#f9fafb',
-                            borderRadius: 20,
-                            paddingHorizontal: 16,
-                            paddingVertical: 10,
-                            fontSize: 15,
-                            marginRight: 8,
-                        }}
-                        placeholder="Type a message..."
-                        value={inputText}
-                        onChangeText={setInputText}
-                        multiline
-                        maxLength={500}
-                        editable={!sending}
-                    />
-                    <TouchableOpacity
-                        onPress={handleSend}
-                        disabled={!inputText.trim() || sending}
-                        style={{
-                            backgroundColor: inputText.trim() && !sending ? '#008080' : '#d1d5db',
-                            width: 44,
-                            height: 44,
-                            borderRadius: 22,
-                            justifyContent: 'center',
+                        {/* Input Area - Always at bottom */}
+                        <View style={{
+                            flexDirection: 'row',
                             alignItems: 'center',
-                        }}
-                    >
-                        <Ionicons name="send" size={20} color="#fff" />
-                    </TouchableOpacity>
+                            paddingHorizontal: 12,
+                            paddingTop: 12,
+                            paddingBottom: keyboardHeight > 0 ? 0 : (insets.bottom || 0),
+                            borderTopWidth: 1,
+                            borderTopColor: '#e5e7eb',
+                            backgroundColor: '#fff',
+                        }}>
+                            <TextInput
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: '#f9fafb',
+                                    borderRadius: 20,
+                                    paddingHorizontal: 16,
+                                    paddingVertical: 10,
+                                    fontSize: 15,
+                                    marginRight: 8,
+                                    color: '#000000',
+                                }}
+                                placeholder="Type a message..."
+                                placeholderTextColor="#9ca3af"
+                                value={inputText}
+                                onChangeText={setInputText}
+                                multiline
+                                maxLength={500}
+                                editable={!sending}
+                            />
+                            <TouchableOpacity
+                                onPress={handleSend}
+                                disabled={!inputText.trim() || sending}
+                                style={{
+                                    backgroundColor: inputText.trim() && !sending ? '#008080' : '#d1d5db',
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: 22,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <Ionicons name="send" size={20} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            ) : (
+                <KeyboardAvoidingView
+                    style={{ flex: 1 }}
+                    behavior="padding"
+                    keyboardVerticalOffset={0}
+                >
+                    <View style={{ flex: 1 }}>
+                        {/* Messages List */}
+                        {loading ? (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                <ActivityIndicator size="large" color="#008080" />
+                                <Text style={{ marginTop: 12, color: '#6b7280', fontSize: 14 }}>
+                                    Loading messages...
+                                </Text>
+                            </View>
+                        ) : messages.length === 0 ? (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 }}>
+                                <Ionicons name="chatbubbles-outline" size={64} color="#d1d5db" />
+                                <Text style={{ marginTop: 16, color: '#6b7280', fontSize: 16, fontWeight: '600' }}>
+                                    No messages yet
+                                </Text>
+                                <Text style={{ marginTop: 8, color: '#9ca3af', fontSize: 14, textAlign: 'center' }}>
+                                    Start a conversation with {caregiverName}
+                                </Text>
+                            </View>
+                        ) : (
+                            <FlatList
+                                ref={flatListRef}
+                                data={messages}
+                                renderItem={renderMessage}
+                                keyExtractor={(item) => item.id}
+                                contentContainerStyle={{ paddingVertical: 8 }}
+                                onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                                keyboardShouldPersistTaps="handled"
+                                style={{ flex: 1 }}
+                            />
+                        )}
+
+                        {/* Input Area - Always at bottom, consistent padding */}
+                        <View style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            paddingHorizontal: 12,
+                            paddingTop: 12,
+                            paddingBottom: keyboardHeight > 0 ? 12 : (12 || 0),
+                            borderTopWidth: 1,
+                            borderTopColor: '#e5e7eb',
+                            backgroundColor: '#fff',
+                        }}>
+                        <TextInput
+                            style={{
+                                flex: 1,
+                                backgroundColor: '#f9fafb',
+                                borderRadius: 20,
+                                paddingHorizontal: 16,
+                                paddingVertical: 10,
+                                fontSize: 15,
+                                marginRight: 8,
+                                color: '#000000', // Black text color
+                            }}
+                            placeholder="Type a message..."
+                            placeholderTextColor="#9ca3af" // Grey placeholder
+                            value={inputText}
+                            onChangeText={setInputText}
+                            multiline
+                            maxLength={500}
+                            editable={!sending}
+                        />
+                        <TouchableOpacity
+                            onPress={handleSend}
+                            disabled={!inputText.trim() || sending}
+                            style={{
+                                backgroundColor: inputText.trim() && !sending ? '#008080' : '#d1d5db',
+                                width: 44,
+                                height: 44,
+                                borderRadius: 22,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}
+                        >
+                            <Ionicons name="send" size={20} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </KeyboardAvoidingView>
+                </KeyboardAvoidingView>
+            )}
         </SafeAreaView>
     );
 }

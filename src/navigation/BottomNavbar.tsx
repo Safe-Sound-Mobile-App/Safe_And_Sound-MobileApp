@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, TouchableOpacity, Image, Alert, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { navbarStyles } from './styles/AppNavigatorStyles';
 import { useNotificationBadge } from '../contexts/NotificationBadgeContext';
@@ -29,6 +30,7 @@ const NOTIFICATION_TAB_INDEX = 1;
 
 export default function BottomNavbar({ state, navigation }: BottomTabBarProps) {
   const { hasNew } = useNotificationBadge();
+  const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(state.index)).current;
 
   // Animate when active tab changes
@@ -65,7 +67,7 @@ export default function BottomNavbar({ state, navigation }: BottomTabBarProps) {
 
   return (
     <View style={navbarStyles.navbarContainer}>
-      <View style={navbarStyles.navbar}>
+      <View style={[navbarStyles.navbar, { paddingBottom: Math.max(12, insets.bottom) }]}>
         {navItems.map((item, index) => {
           const active = isActive(index);
           

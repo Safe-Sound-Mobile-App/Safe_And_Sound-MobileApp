@@ -24,16 +24,16 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // ✅ Elders collection - ให้ authenticated users อ่านได้
+    // Elders: เฉพาะเจ้าของหรือ caregiver ที่มี relationship กับ elder นี้ถึงจะอ่านได้
     match /elders/{userId} {
-      allow read: if isAuthenticated();  // ✅ เพิ่มบรรทัดนี้
+      allow read: if isAuthenticated() && (isOwner(userId) || hasActiveRelationship(request.auth.uid, userId));
       allow write: if isOwner(userId);
     }
     
     // Caregivers collection
     match /caregivers/{userId} {
-      allow read, write: if isOwner(userId);
-      allow read: if isAuthenticated() && hasActiveRelationship(userId, request.auth.uid);
+      allow read: if isOwner(userId) || (isAuthenticated() && hasActiveRelationship(userId, request.auth.uid));
+      allow write: if isOwner(userId);
     }
     
     // Relationships collection
@@ -61,22 +61,16 @@ service cloud.firestore {
       allow write: if isOwner(elderId);
     }
     
-    // Helper function to check if user is participant in chat
-    function isChatParticipant(chatId) {
-      let chatDoc = get(/databases/$(database)/documents/chats/$(chatId));
-      return chatDoc != null && chatDoc.data != null && chatDoc.data.participants != null && (
-        chatDoc.data.participants.caregiverId == request.auth.uid ||
-        chatDoc.data.participants.elderId == request.auth.uid
-      );
-    }
-    
     // Chats collection
     match /chats/{chatId} {
       allow read: if isAuthenticated() && (
         resource.data.participants.caregiverId == request.auth.uid ||
         resource.data.participants.elderId == request.auth.uid
       );
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && (
+        request.resource.data.participants.caregiverId == request.auth.uid ||
+        request.resource.data.participants.elderId == request.auth.uid
+      );
       allow update: if isAuthenticated() && (
         resource.data.participants.caregiverId == request.auth.uid ||
         resource.data.participants.elderId == request.auth.uid
@@ -84,17 +78,14 @@ service cloud.firestore {
       
       // Chat messages subcollection
       match /messages/{messageId} {
-        // Allow read if user is authenticated and either:
-        // 1. Chat doesn't exist yet (for empty chats - will be created when first message is sent)
-        // 2. User is participant in the chat
         allow read: if isAuthenticated() && (
-          !exists(/databases/$(database)/documents/chats/$(chatId)) ||
-          isChatParticipant(chatId)
+          get(/databases/$(database)/documents/chats/$(chatId)).data.participants.caregiverId == request.auth.uid ||
+          get(/databases/$(database)/documents/chats/$(chatId)).data.participants.elderId == request.auth.uid
         );
-        // Allow create if user is authenticated
-        // Note: senderId validation is done in the application code
-        // We allow any authenticated user to create messages
-        allow create: if isAuthenticated();
+        allow create: if isAuthenticated() && (
+          get(/databases/$(database)/documents/chats/$(chatId)).data.participants.caregiverId == request.auth.uid ||
+          get(/databases/$(database)/documents/chats/$(chatId)).data.participants.elderId == request.auth.uid
+        );
         allow update: if false; // Messages should not be updated
         allow delete: if false; // Messages should not be deleted
       }

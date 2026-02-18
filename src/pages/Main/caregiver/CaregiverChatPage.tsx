@@ -42,40 +42,45 @@ export default function CaregiverChatPage({ route, navigation }: Props) {
             return;
         }
 
-        // Fetch current user's name
-        const fetchUserName = async () => {
+        let unsubscribe: (() => void) | undefined;
+
+        const init = async () => {
+            // Fetch current user's name
             const result = await getUserProfile(currentUser.uid);
             if (result.success && result.data) {
                 setCurrentUserName(`${result.data.firstName} ${result.data.lastName}`);
             }
-        };
-        fetchUserName();
 
-        // Create chat document and reset unread count when opening chat
-        resetChatUnreadCount(elderId, currentUser.uid, currentUser.uid).catch((error) => {
-            console.warn('Failed to create/reset chat:', error);
+            // Create chat document and reset unread count when opening chat
+            // ✅ await ก่อน subscribe เพื่อให้ chat doc พร้อมก่อน rules ตรวจสอบ
+            await resetChatUnreadCount(elderId, currentUser.uid, currentUser.uid);
+
+            // Listen to chat messages
+            unsubscribe = listenToChatMessages(
+                elderId,
+                currentUser.uid,
+                (newMessages) => {
+                    setMessages(newMessages);
+                    setLoading(false);
+                    // Auto-scroll to bottom when new message arrives
+                    setTimeout(() => {
+                        flatListRef.current?.scrollToEnd({ animated: true });
+                    }, 100);
+                },
+                (error) => {
+                    console.error('Chat error:', error);
+                    setLoading(false);
+                    Alert.alert('Error', error);
+                }
+            );
+        };
+
+        init().catch((error) => {
+            console.error('Failed to initialize chat:', error);
+            setLoading(false);
         });
 
-        // Listen to chat messages
-        const unsubscribe = listenToChatMessages(
-            elderId,
-            currentUser.uid,
-            (newMessages) => {
-                setMessages(newMessages);
-                setLoading(false);
-                // Auto-scroll to bottom when new message arrives
-                setTimeout(() => {
-                    flatListRef.current?.scrollToEnd({ animated: true });
-                }, 100);
-            },
-            (error) => {
-                console.error('Chat error:', error);
-                setLoading(false);
-                Alert.alert('Error', error);
-            }
-        );
-
-        return () => unsubscribe();
+        return () => unsubscribe?.();
     }, [elderId]);
 
     // Track keyboard height for Android to maintain consistent position

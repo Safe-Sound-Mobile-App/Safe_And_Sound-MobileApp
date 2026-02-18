@@ -34,47 +34,19 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// Mock Elder Data Interface
+// Elder Data Interface (from Firebase: Gyroscope Normal/Fell, Heart Rate Bpm, SpO2 %)
 interface ElderData {
   id: string;
   name: string;
   image: any; // require() type
-  risk: 'Normal' | 'Warning' | 'Danger';
+  risk: 'Normal' | 'Warning' | 'Danger' | 'Not Wearing';
   gyroscope: string;
   heartRate: number;
   spO2: number;
 }
 
-// Mock Data - Replace with API calls
-const mockElderData: ElderData[] = [
-  {
-    id: '1',
-    name: 'Elder1',
-    image: require('../../../../assets/icons/elder.png'), // You'll need to add these images
-    risk: 'Danger',
-    gyroscope: 'Normal',
-    heartRate: 120,
-    spO2: 80,
-  },
-  {
-    id: '2',
-    name: 'Elder2',
-    image: require('../../../../assets/icons/elder.png'),
-    risk: 'Warning',
-    gyroscope: 'Fell',
-    heartRate: 55,
-    spO2: 99,
-  },
-  {
-    id: '3',
-    name: 'Elder3',
-    image: require('../../../../assets/icons/elder.png'),
-    risk: 'Normal',
-    gyroscope: 'Normal',
-    heartRate: 70,
-    spO2: 99,
-  },
-];
+// Mock data only used when no API data (e.g. empty list)
+const mockElderData: ElderData[] = [];
 
 type Props = NativeStackScreenProps<RootStackParamList, "CaregiverHomepage">;
 
@@ -120,10 +92,10 @@ export default function CaregiverHomepage({ navigation }: Props) {
               id: elder.userId,
               name: userName,
               image: profileImage,
-              risk: elder.currentHealthStatus.risk,
-              gyroscope: elder.currentHealthStatus.gyroscope,
-              heartRate: elder.currentHealthStatus.heartRate,
-              spO2: elder.currentHealthStatus.spO2,
+              risk: elder.currentHealthStatus?.risk ?? 'Not Wearing',
+              gyroscope: elder.currentHealthStatus?.gyroscope ?? 'Normal',
+              heartRate: elder.currentHealthStatus?.heartRate ?? 0,
+              spO2: elder.currentHealthStatus?.spO2 ?? 0,
             };
           })
         );
@@ -216,17 +188,19 @@ export default function CaregiverHomepage({ navigation }: Props) {
       case 'Danger': return '#ef4444'; // Red
       case 'Warning': return '#f59e0b'; // Yellow/Orange
       case 'Normal': return '#6b7280'; // Gray
-      default: return '#6b7280';
+      case 'Not Wearing': return '#9ca3af'; // Faded gray
+      default: return '#9ca3af';
     }
   };
 
-  // Function to get card background color
+  // Function to get card background color (Not Wearing = faded white)
   const getCardBackgroundColor = (risk: string) => {
     switch (risk) {
       case 'Danger': return '#fca5a5'; // Light red
       case 'Warning': return '#ffcf77'; // Light yellow
       case 'Normal': return '#ffffff'; // White
-      default: return '#ffffff';
+      case 'Not Wearing': return '#f3f4f6'; // Faded white
+      default: return '#f3f4f6';
     }
   };
 
@@ -236,6 +210,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
       case 'Danger': return triangleIcon;
       case 'Warning': return diamondIcon;
       case 'Normal': return null;
+      case 'Not Wearing': return null;
       default: return null;
     }
   };
@@ -364,8 +339,8 @@ export default function CaregiverHomepage({ navigation }: Props) {
               <View style={caregiverHomeStyles.vitalRow}>
                 <Text style={caregiverHomeStyles.vitalLabel}>Gyroscope:</Text>
                 <View style={caregiverHomeStyles.vitalValueContainer}>
-                  <Text style={caregiverHomeStyles.vitalValue}>{elder.gyroscope}</Text>
-                  {elder.gyroscope !== 'Normal' && (
+                  <Text style={caregiverHomeStyles.vitalValue}>{elder.risk === 'Not Wearing' ? '-' : elder.gyroscope}</Text>
+                  {elder.risk !== 'Not Wearing' && elder.gyroscope !== 'Normal' && (
                     <Image 
                         source={hexagonIcon} 
                         style={{ width: 12, height: 12, tintColor: elder.gyroscope === 'Fell' ? '#f59e0b' : '#6b7280' }}
@@ -378,8 +353,8 @@ export default function CaregiverHomepage({ navigation }: Props) {
               <View style={caregiverHomeStyles.vitalRow}>
                 <Text style={caregiverHomeStyles.vitalLabel}>Heart Rate:</Text>
                 <View style={caregiverHomeStyles.vitalValueContainer}>
-                  <Text style={caregiverHomeStyles.vitalValue}>{elder.heartRate} Bpm</Text>
-                  {(elder.heartRate > 100 || elder.heartRate < 60) && (
+                  <Text style={caregiverHomeStyles.vitalValue}>{elder.risk === 'Not Wearing' ? '-' : `${elder.heartRate} Bpm`}</Text>
+                  {elder.risk !== 'Not Wearing' && (elder.heartRate > 100 || elder.heartRate < 60) && (
                     <Image 
                         source={hexagonIcon} 
                         style={{ width: 12, height: 12, tintColor: elder.heartRate > 100 ? '#ef4444' : '#f59e0b'}}
@@ -392,8 +367,8 @@ export default function CaregiverHomepage({ navigation }: Props) {
               <View style={caregiverHomeStyles.vitalRow}>
                 <Text style={caregiverHomeStyles.vitalLabel}>SpO2:</Text>
                 <View style={caregiverHomeStyles.vitalValueContainer}>
-                  <Text style={caregiverHomeStyles.vitalValue}>{elder.spO2}%</Text>
-                  {elder.spO2 < 95 && (
+                  <Text style={caregiverHomeStyles.vitalValue}>{elder.risk === 'Not Wearing' ? '-' : `${elder.spO2}%`}</Text>
+                  {elder.risk !== 'Not Wearing' && elder.spO2 < 95 && (
                     <Image 
                         source={hexagonIcon} 
                         style={{ width: 12, height: 12, tintColor: "#ef4444" }}

@@ -35,7 +35,7 @@ export interface Elder {
   emergencyContactRelation: string | null;
   backgroundImageURL: string | null;
   currentHealthStatus: {
-    risk: 'Normal' | 'Warning' | 'Danger';
+    risk: 'Normal' | 'Warning' | 'Danger' | 'Not Wearing';
     heartRate: number;
     spO2: number;
     gyroscope: 'Normal' | 'Fell';
@@ -81,7 +81,7 @@ export interface HealthRecord {
   heartRate: number;
   spO2: number;
   gyroscope: 'Normal' | 'Fell';
-  risk: 'Normal' | 'Warning' | 'Danger';
+  risk: 'Normal' | 'Warning' | 'Danger' | 'Not Wearing';
   location: {
     latitude: number;
     longitude: number;
@@ -346,7 +346,7 @@ export const updateElderHealthStatus = async (
     heartRate: number;
     spO2: number;
     gyroscope: 'Normal' | 'Fell';
-    risk: 'Normal' | 'Warning' | 'Danger';
+    risk: 'Normal' | 'Warning' | 'Danger' | 'Not Wearing';
   }
 ): Promise<ServiceResult> => {
   try {
@@ -476,7 +476,7 @@ export const createHealthRecord = async (
     heartRate: number;
     spO2: number;
     gyroscope: 'Normal' | 'Fell';
-    risk: 'Normal' | 'Warning' | 'Danger';
+    risk: 'Normal' | 'Warning' | 'Danger' | 'Not Wearing';
   },
   location?: { latitude: number; longitude: number }
 ): Promise<ServiceResult> => {
@@ -832,6 +832,25 @@ export const getCaregiverElders = async (
 };
 
 /**
+ * Get a single elder by ID (for caregiver elder detail page).
+ * Caller should ensure the caregiver has an active relationship with this elder.
+ */
+export const getElderById = async (elderId: string): Promise<ServiceResult<Elder>> => {
+  try {
+    const doc = await firestore().collection('elders').doc(elderId).get();
+    if (!doc.exists) {
+      return { success: false, error: 'Elder not found' };
+    }
+    return { success: true, data: doc.data() as Elder };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to get elder',
+    };
+  }
+};
+
+/**
  * Search for an elder by UID (userId)
  */
 export const searchElderByUid = async (
@@ -1050,6 +1069,12 @@ export const resetChatUnreadCount = async (
 ): Promise<ServiceResult<void>> => {
   try {
     const chatId = [elderId, caregiverId].sort().join('_');
+
+    console.log('=== resetChatUnreadCount called');
+    console.log('=== elderId:', elderId);
+    console.log('=== caregiverId:', caregiverId);
+    console.log('=== chatId:', chatId);
+
     const chatRef = firestore().collection('chats').doc(chatId);
     
     // Check if chat document exists

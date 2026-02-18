@@ -136,7 +136,8 @@ export const caregiverElderInfoStyles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 15,
     padding: 20,
-    marginBottom: 100,
+    paddingBottom: 200,
+    marginBottom: 80,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -200,7 +201,7 @@ export const caregiverElderInfoStyles = StyleSheet.create({
   // Map Styles
   mapContainer: {
     width: '100%',
-    height: 200,
+    height: 0,
     borderRadius: 10,
     overflow: 'hidden',
     position: 'relative',
@@ -208,7 +209,7 @@ export const caregiverElderInfoStyles = StyleSheet.create({
   },
   mapImage: {
     width: '100%',
-    height: '100%',
+    // height: '100%',
   },
   mapMarkerOverlay: {
     position: 'absolute',

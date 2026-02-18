@@ -19,6 +19,7 @@ import GradientHeader from '../../../header/GradientHeader';
 import { elderHomeStyles as styles } from "../../../global_style/elderUseSection/elderHomeStyles";
 import auth from '@react-native-firebase/auth';
 import { getElderCaregivers, getUserProfile, updateElderHealthStatus, sendEmergencyAlert } from '../../../services/firestore';
+import { requestLocationPermissions, startLocationTracking, checkLocationPermissions } from '../../../services/location';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const defaultAvatar = require('../../../../assets/icons/elder.png');
@@ -43,6 +44,7 @@ export default function ElderHomepage({ navigation }: Props) {
     const [loading, setLoading] = useState(true);
     const [showHealthModal, setShowHealthModal] = useState(false);
     const [updatingHealth, setUpdatingHealth] = useState(false);
+    const [locationEnabled, setLocationEnabled] = useState<boolean | null>(null);
     
     // Health data states
     const [heartRate, setHeartRate] = useState('70');
@@ -91,6 +93,119 @@ export default function ElderHomepage({ navigation }: Props) {
         } finally {
             setLoading(false);
         }
+    }, []);
+
+    // Initialize location tracking
+    useEffect(() => {
+        let stopTracking: (() => void) | null = null;
+        let mounted = true;
+
+        const initializeLocation = async () => {
+            try {
+                const currentUser = auth().currentUser;
+                if (!currentUser) {
+                    console.log('[Location] No authenticated user, waiting...');
+                    // Wait a bit and try again if user not ready
+                    setTimeout(() => {
+                        if (mounted) {
+                            initializeLocation();
+                        }
+                    }, 1000);
+                    return;
+                }
+
+                console.log('[Location] ===== Starting location initialization =====');
+                console.log('[Location] Elder ID:', currentUser.uid);
+
+                // Check current permission status
+                console.log('[Location] Step 1: Checking current permission status...');
+                const permissionStatus = await checkLocationPermissions();
+                console.log('[Location] Permission status result:', JSON.stringify(permissionStatus, null, 2));
+                setLocationEnabled(permissionStatus.granted);
+
+                if (permissionStatus.granted) {
+                    console.log('[Location] ✓ Permission already granted, starting tracking...');
+                    // Start tracking location (updates every 30 seconds)
+                    stopTracking = startLocationTracking(
+                        currentUser.uid,
+                        30000, // 30 seconds
+                        (error) => {
+                            if (mounted) {
+                                console.error('[Location] Tracking error:', error);
+                            }
+                        }
+                    );
+                    console.log('[Location] ✓ Location tracking started');
+                } else {
+                    console.log('[Location] ✗ Permission not granted');
+                    console.log('[Location] Step 2: Requesting permission...');
+                    
+                    // Request permission immediately
+                    const requestResult = await requestLocationPermissions();
+                    console.log('[Location] Request result:', JSON.stringify(requestResult, null, 2));
+                    
+                    if (mounted) {
+                        setLocationEnabled(requestResult.granted);
+                        if (requestResult.granted) {
+                            console.log('[Location] ✓ Permission granted! Starting tracking...');
+                            // Start tracking after permission granted
+                            stopTracking = startLocationTracking(
+                                currentUser.uid,
+                                30000,
+                                (error) => {
+                                    if (mounted) {
+                                        console.error('[Location] Tracking error:', error);
+                                    }
+                                }
+                            );
+                            console.log('[Location] ✓ Location tracking started');
+                        } else {
+                            console.log('[Location] ✗ Permission denied or not available');
+                            console.log('[Location] Can ask again:', requestResult.canAskAgain);
+                            if (requestResult.message) {
+                                console.log('[Location] Message:', requestResult.message);
+                                // Show alert to inform user
+                                Alert.alert(
+                                    'Location Permission Required',
+                                    requestResult.message + '\n\nPlease enable location permission in Settings to allow caregivers to track your location for safety.',
+                                    [
+                                        {
+                                            text: 'OK',
+                                            style: 'default',
+                                        },
+                                    ]
+                                );
+                            }
+                        }
+                    }
+                }
+                console.log('[Location] ===== Location initialization complete =====');
+            } catch (error: any) {
+                console.error('[Location] ===== ERROR in location initialization =====');
+                console.error('[Location] Error:', error);
+                console.error('[Location] Error message:', error?.message);
+                console.error('[Location] Error stack:', error?.stack);
+                if (mounted) {
+                    setLocationEnabled(false);
+                    Alert.alert(
+                        'Location Error',
+                        'Failed to initialize location tracking: ' + (error?.message || 'Unknown error') + '\n\nPlease check console logs for details.',
+                        [{ text: 'OK' }]
+                    );
+                }
+            }
+        };
+
+        // Start immediately
+        initializeLocation();
+
+        return () => {
+            mounted = false;
+            if (stopTracking) {
+                console.log('[Location] Cleaning up: Stopping location tracking');
+                stopTracking();
+            }
+        };
     }, []);
 
     // Fetch on mount and whenever screen comes into focus (e.g. after accepting a caregiver on Notification)
@@ -279,6 +394,62 @@ export default function ElderHomepage({ navigation }: Props) {
                         Update Health Data
                     </Text>
                 </TouchableOpacity>
+
+                {/* Location Status Button (for testing) */}
+                {locationEnabled === false && (
+                    <TouchableOpacity
+                        style={{
+                            backgroundColor: '#f59e0b',
+                            paddingVertical: 12,
+                            paddingHorizontal: 20,
+                            borderRadius: 12,
+                            marginHorizontal: 20,
+                            marginBottom: 16,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                        }}
+                        onPress={async () => {
+                            const currentUser = auth().currentUser;
+                            if (!currentUser) {
+                                Alert.alert('Error', 'No authenticated user found');
+                                return;
+                            }
+                            const result = await requestLocationPermissions();
+                            setLocationEnabled(result.granted);
+                            if (result.granted) {
+                                Alert.alert('Success', 'Location permission granted! Location tracking will start automatically.');
+                            } else {
+                                Alert.alert('Permission Denied', result.message || 'Location permission is required.');
+                            }
+                        }}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="location-outline" size={20} color="#fff" />
+                        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 }}>
+                            Enable Location Tracking
+                        </Text>
+                    </TouchableOpacity>
+                )}
+                
+                {locationEnabled === true && (
+                    <View style={{
+                        backgroundColor: '#d1fae5',
+                        paddingVertical: 12,
+                        paddingHorizontal: 20,
+                        borderRadius: 12,
+                        marginHorizontal: 20,
+                        marginBottom: 16,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}>
+                        <Ionicons name="checkmark-circle" size={20} color="#059669" />
+                        <Text style={{ color: '#059669', fontSize: 15, fontWeight: '600', marginLeft: 8 }}>
+                            Location Tracking Active
+                        </Text>
+                    </View>
+                )}
 
                 {/* Loading State */}
                 {loading && (

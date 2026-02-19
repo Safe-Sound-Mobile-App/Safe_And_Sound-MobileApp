@@ -987,9 +987,12 @@ export const searchElderByUid = async (
   uid: string
 ): Promise<ServiceResult<{ user: User; elder: Elder }>> => {
   try {
+    console.log('[searchElderByUid] Searching for elder with UID:', uid);
+    
     // First, get user info
     const userResult = await getUserProfile(uid);
     if (!userResult.success || !userResult.data) {
+      console.log('[searchElderByUid] User profile not found for UID:', uid);
       return {
         success: false,
         error: 'Elder not found',
@@ -998,6 +1001,7 @@ export const searchElderByUid = async (
 
     // Check if user is an elder
     if (userResult.data.role !== 'elder') {
+      console.log('[searchElderByUid] User is not an elder. Role:', userResult.data.role);
       return {
         success: false,
         error: 'User is not an elder',
@@ -1005,6 +1009,7 @@ export const searchElderByUid = async (
     }
 
     // Get elder profile
+    console.log('[searchElderByUid] Fetching elder document...');
     const elderDoc = await firestore().collection('elders').doc(uid).get();
     
     // If elder profile doesn't exist, create a default one
@@ -1041,6 +1046,7 @@ export const searchElderByUid = async (
       elderData = elderDoc.data() as Elder;
     }
 
+    console.log('[searchElderByUid] Successfully found elder:', uid);
     return {
       success: true,
       data: {
@@ -1049,6 +1055,12 @@ export const searchElderByUid = async (
       },
     };
   } catch (error: any) {
+    console.error('[searchElderByUid] Error searching elder:', error);
+    console.error('[searchElderByUid] Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+    });
     return {
       success: false,
       error: error.message || 'Failed to search elder',

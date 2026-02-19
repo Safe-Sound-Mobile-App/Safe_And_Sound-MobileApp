@@ -48,7 +48,7 @@ export const elderNotificationStyles = StyleSheet.create({
         borderWidth: 0,
     },
     tabText: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '600',
         fontFamily: 'BalooBhaijaan2_400Regular',
         color: '#6b7280',
@@ -117,6 +117,12 @@ export const elderNotificationStyles = StyleSheet.create({
         borderRadius: 24,
         backgroundColor: '#d1d5db',
     },
+    avatarImage: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#e5e7eb',
+    },
     requestContent: {
         flex: 1,
     },
@@ -135,11 +141,11 @@ export const elderNotificationStyles = StyleSheet.create({
         padding: 5,
     },
 
-    // --- Activity Badge ---
+    // --- Activity Badge (aligned with caregiver Notification Activities card) ---
     activityBadge: {
         borderRadius: 15,
-        padding: 18,
-        marginBottom: 15,
+        padding: 15,
+        marginBottom: 12,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
@@ -149,44 +155,41 @@ export const elderNotificationStyles = StyleSheet.create({
     },
     unreadDot: {
         position: 'absolute',
-        top: 15,
-        right: 15,
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+        top: 12,
+        right: 12,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
         backgroundColor: '#ef4444',
         zIndex: 10,
-        borderWidth: 1.5,
-        borderColor: 'rgba(255,255,255,0.5)'
     },
     activityContent: {
+        marginBottom: 8,
     },
     activityTitleRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        gap: 8,
         marginBottom: 6,
-        paddingRight: 20,
     },
     activityTitle: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '600',
         fontFamily: 'BalooBhaijaan2_600SemiBold',
     },
     alertIcon: {
-        width: 20,
-        height: 20,
+        width: 16,
+        height: 16,
     },
     activityMessage: {
-        fontSize: 15,
+        fontSize: 14,
         fontFamily: 'BalooBhaijaan2_400Regular',
-        lineHeight: 22,
-        marginBottom: 8,
+        lineHeight: 20,
     },
     activityTimestamp: {
-        fontSize: 13,
+        fontSize: 12,
         fontFamily: 'BalooBhaijaan2_400Regular',
-        color: '#000000',
+        color: '#6b7280',
         textAlign: 'right',
     },
 

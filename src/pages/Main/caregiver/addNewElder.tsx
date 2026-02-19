@@ -1,30 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image, ScrollView, Modal } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image, ScrollView, Modal, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { addNewElderStyles } from '../../../global_style/caregiverUseSection/addNewElderStyles';
 import GradientHeader from '../../../header/GradientHeader';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
+import auth from '@react-native-firebase/auth';
+import { searchElderByUid, createRelationship, getRelationshipStatus } from '../../../services/firestore';
 
 const elderIcon = require('../../../../assets/icons/elder.png');
 const searchIcon = require('../../../../assets/icons/search.png');
 const addIcon = require('../../../../assets/icons/plus.png');
-const backIcon = require('../../../../assets/icons/direction/left.png');
 
-// Mock Elder Search Result Interface
+// Elder Search Result Interface
+type RelationshipStatus = 'none' | 'pending' | 'active';
+
 interface ElderSearchResult {
   uid: string;
   name: string;
-  image: any;
+  photoURL: string | null;
+  relationshipStatus: RelationshipStatus;
 }
-
-// Mock database of available elders
-const mockElderDatabase: ElderSearchResult[] = [
-  { uid: 'ELDER66', name: 'Elder66', image: require('../../../../assets/icons/elder.png') },
-  { uid: 'ELDER101', name: 'Elder101', image: require('../../../../assets/icons/elder.png') },
-  { uid: 'ELDER45', name: 'Elder45', image: require('../../../../assets/icons/elder.png') },
-  { uid: 'ELDER89', name: 'Elder89', image: require('../../../../assets/icons/elder.png') },
-];
 
 type Props = NativeStackScreenProps<RootStackParamList, "AddNewElder">;
 
@@ -35,6 +31,7 @@ export default function AddNewElder({ navigation }: Props) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [selectedElder, setSelectedElder] = useState<ElderSearchResult | null>(null);
+  const [adding, setAdding] = useState(false);
 
   // Real-time search effect
   useEffect(() => {
@@ -46,30 +43,78 @@ export default function AddNewElder({ navigation }: Props) {
 
     setIsSearching(true);
 
-    // Simulate API call delay
-    const searchTimeout = setTimeout(() => {
-      const results = mockElderDatabase.filter(elder =>
-        elder.uid.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setSearchResults(results);
-      setIsSearching(false);
-    }, 300); // 300ms debounce
+    // Search in Firestore and check existing relationship
+    const searchTimeout = setTimeout(async () => {
+      try {
+        const currentUser = auth().currentUser;
+        const result = await searchElderByUid(searchQuery.trim());
+
+        if (result.success && result.data) {
+          const elderId = result.data.user.uid;
+          let relationshipStatus: RelationshipStatus = 'none';
+          if (currentUser) {
+            const statusResult = await getRelationshipStatus(currentUser.uid, elderId);
+            if (statusResult.success && statusResult.data) {
+              relationshipStatus = statusResult.data;
+            }
+          }
+          const elderData: ElderSearchResult = {
+            uid: elderId,
+            name: `${result.data.user.firstName} ${result.data.user.lastName}`,
+            photoURL: result.data.user.photoURL ?? null,
+            relationshipStatus,
+          };
+          setSearchResults([elderData]);
+        } else {
+          setSearchResults([]);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 500); // 500ms debounce
 
     return () => clearTimeout(searchTimeout);
   }, [searchQuery]);
 
-  // Handle add elder
+  // Handle add elder (only when status is 'none')
   const handleAddElder = (elder: ElderSearchResult) => {
+    if (elder.relationshipStatus !== 'none') return;
     setSelectedElder(elder);
     setShowConfirmModal(true);
   };
 
-  const confirmAddElder = () => {
-    if (selectedElder) {
-      console.log(`Adding elder: ${selectedElder.name} (${selectedElder.uid})`);
-      // TODO: Call API to add elder to caregiver's list
-      setShowConfirmModal(false);
-      setShowSuccessModal(true);
+  const confirmAddElder = async () => {
+    if (!selectedElder) return;
+
+    setAdding(true);
+    try {
+      const currentUser = auth().currentUser;
+      if (!currentUser) {
+        Alert.alert('Error', 'No authenticated user found');
+        return;
+      }
+
+      // Create relationship
+      const result = await createRelationship(
+        currentUser.uid,
+        selectedElder.uid,
+        'professional' // or 'family', 'volunteer'
+      );
+
+      if (result.success) {
+        setShowConfirmModal(false);
+        setShowSuccessModal(true);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to add elder');
+      }
+    } catch (error: any) {
+      console.error('Add elder error:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setAdding(false);
     }
   };
 
@@ -78,29 +123,50 @@ export default function AddNewElder({ navigation }: Props) {
     navigation.goBack();
   };
 
-  // Render elder card
+  // Render elder card (show Add only when no existing relationship)
   const renderElderCard = (elder: ElderSearchResult) => {
+    const canAdd = elder.relationshipStatus === 'none';
+    const statusLabel =
+      elder.relationshipStatus === 'active'
+        ? 'In your care list'
+        : elder.relationshipStatus === 'pending'
+          ? 'Request pending'
+          : null;
+
     return (
       <View key={elder.uid} style={addNewElderStyles.elderCard}>
         <Image
-          source={elder.image}
+          source={elder.photoURL ? { uri: elder.photoURL } : elderIcon}
           style={addNewElderStyles.elderImage}
           resizeMode="cover"
         />
-        
-        <Text style={addNewElderStyles.elderName}>{elder.name}</Text>
-        
-        <TouchableOpacity
-          style={addNewElderStyles.addButton}
-          onPress={() => handleAddElder(elder)}
-          activeOpacity={0.7}
-        >
-            <Image 
-              source={addIcon} 
+
+        <View style={addNewElderStyles.elderCardCenter}>
+          <Text style={addNewElderStyles.elderName}>{elder.name}</Text>
+          {statusLabel != null && (
+            <Text style={addNewElderStyles.relationshipStatusText}>{statusLabel}</Text>
+          )}
+        </View>
+
+        {canAdd ? (
+          <TouchableOpacity
+            style={addNewElderStyles.addButton}
+            onPress={() => handleAddElder(elder)}
+            activeOpacity={0.7}
+          >
+            <Image
+              source={addIcon}
               style={{ width: 16, height: 16, tintColor: '#ffffff' }}
               resizeMode="contain"
             />
-        </TouchableOpacity>
+          </TouchableOpacity>
+        ) : (
+          <View style={addNewElderStyles.addButtonDisabled}>
+            <Text style={addNewElderStyles.addButtonDisabledText}>
+              {elder.relationshipStatus === 'pending' ? 'Pending' : 'Added'}
+            </Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -109,20 +175,6 @@ export default function AddNewElder({ navigation }: Props) {
     <SafeAreaView style={addNewElderStyles.container}>
       {/* Header */}
       <GradientHeader title="Safe & Sound" />
-
-      {/* Back Button */}
-      <TouchableOpacity
-        style={addNewElderStyles.backButton}
-        onPress={() => navigation.goBack()}
-        activeOpacity={0.7}
-      >
-        <Image
-          source={backIcon}
-          style={addNewElderStyles.backIcon}
-          resizeMode="contain"
-        />
-        <Text style={addNewElderStyles.backText}>Back</Text>
-      </TouchableOpacity>
 
       <ScrollView
         style={addNewElderStyles.scrollContainer}
@@ -189,9 +241,9 @@ export default function AddNewElder({ navigation }: Props) {
           <View style={addNewElderStyles.modalContainer}>
             <View style={addNewElderStyles.modalIconContainer}>
               <Image
-                source={elderIcon}
-                style={addNewElderStyles.modalIcon}
-                resizeMode="contain"
+                source={selectedElder?.photoURL ? { uri: selectedElder.photoURL } : elderIcon}
+                style={selectedElder?.photoURL ? addNewElderStyles.modalProfileImage : addNewElderStyles.modalIcon}
+                resizeMode={selectedElder?.photoURL ? 'cover' : 'contain'}
               />
             </View>
 
@@ -205,16 +257,22 @@ export default function AddNewElder({ navigation }: Props) {
                 style={addNewElderStyles.modalCancelButton}
                 onPress={() => setShowConfirmModal(false)}
                 activeOpacity={0.7}
+                disabled={adding}
               >
                 <Text style={addNewElderStyles.modalCancelButtonText}>Cancel</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={addNewElderStyles.modalConfirmButton}
+                style={[addNewElderStyles.modalConfirmButton, adding && { opacity: 0.6 }]}
                 onPress={confirmAddElder}
                 activeOpacity={0.7}
+                disabled={adding}
               >
-                <Text style={addNewElderStyles.modalConfirmButtonText}>Add</Text>
+                {adding ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={addNewElderStyles.modalConfirmButtonText}>Add</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -231,12 +289,12 @@ export default function AddNewElder({ navigation }: Props) {
         <View style={addNewElderStyles.modalOverlay}>
           <View style={addNewElderStyles.modalContainer}>
             <View style={addNewElderStyles.successIconContainer}>
-              <Ionicons name="checkmark-circle" size={64} color="#10b981" />
+              <Ionicons name="send" size={64} color="#10b981" />
             </View>
 
-            <Text style={addNewElderStyles.modalTitle}>Success!</Text>
+            <Text style={addNewElderStyles.modalTitle}>Request sent</Text>
             <Text style={addNewElderStyles.modalMessage}>
-              {selectedElder?.name} has been added to your care list.
+              Your request has been sent to {selectedElder?.name}. They will see it in their Caregiver Request tab and can accept or decline.
             </Text>
 
             <TouchableOpacity

@@ -15,10 +15,11 @@ export const profileStyles = StyleSheet.create({
     backgroundContainer: {
         position: 'relative',
         marginBottom: 80,
+        marginTop: -30, // เพิ่มจาก -20 → -30 เพื่อลบช่องว่าง
     },
     backgroundImageWrapper: {
         width: '100%',
-        height: 200,
+        height: 140, // ลดจาก 200 → 140
         backgroundColor: '#e5e7eb',
         position: 'relative',
     },
@@ -33,7 +34,7 @@ export const profileStyles = StyleSheet.create({
     },
     backgroundCameraButton: {
         position: 'absolute',
-        top: 15,
+        top: 40,  // เพิ่มจาก 25 → 40 เพื่อไม่โดนบัง
         right: 15,
         width: 40,
         height: 40,

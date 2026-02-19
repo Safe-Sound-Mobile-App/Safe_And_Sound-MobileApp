@@ -9,7 +9,7 @@ export const headerStyles = StyleSheet.create({
   },
   header: {
     height: 90,
-    paddingTop: 20,
+    paddingTop: 8,
     paddingBottom: 20,
     paddingHorizontal: 20,
     backgroundColor: '#ffffff',
@@ -25,7 +25,7 @@ export const headerStyles = StyleSheet.create({
     elevation: 3,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10
+    marginBottom: 0  // ลดจาก 10 → 0 เพื่อลบช่องว่าง
   },
   appTitle: {
     // fontSize: baseFontSizes.appTitle, // Will be scaled by context

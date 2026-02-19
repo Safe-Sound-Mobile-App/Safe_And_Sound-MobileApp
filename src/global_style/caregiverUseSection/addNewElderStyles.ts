@@ -86,13 +86,21 @@ export const addNewElderStyles = StyleSheet.create({
     borderRadius: 25,
     backgroundColor: '#e5e7eb',
   },
-  elderName: {
+  elderCardCenter: {
     flex: 1,
+    marginLeft: 15,
+  },
+  elderName: {
     fontSize: 16,
     fontWeight: '600',
     fontFamily: 'BalooBhaijaan2_600SemiBold',
     color: '#374151',
-    marginLeft: 15,
+  },
+  relationshipStatusText: {
+    fontSize: 13,
+    fontFamily: 'BalooBhaijaan2_400Regular',
+    color: '#6b7280',
+    marginTop: 4,
   },
   addButton: {
     width: 36,
@@ -109,6 +117,20 @@ export const addNewElderStyles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  addButtonDisabled: {
+    paddingHorizontal: 12,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonDisabledText: {
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'BalooBhaijaan2_600SemiBold',
+    color: '#6b7280',
   },
   // Modal Styles
   modalOverlay: {
@@ -147,6 +169,11 @@ export const addNewElderStyles = StyleSheet.create({
     width: 48,
     height: 48,
     tintColor: '#374151',
+  },
+  modalProfileImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   successIconContainer: {
     marginBottom: 20,
@@ -229,37 +256,5 @@ export const addNewElderStyles = StyleSheet.create({
     fontWeight: '600',
     fontFamily: 'BalooBhaijaan2_600SemiBold',
     color: '#ffffff',
-  },
-  backButton: {
-    position: 'absolute',
-    paddingRight: 12,
-    bottom: 50,
-    left: 20,
-    zIndex: 10,
-    width: 100,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#ffffff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  backIcon: {
-    width: 30,
-    height: 30,
-    tintColor: '#000000',
-  },
-  backText: {
-    fontSize: 14,
-    color: '#000000',
-    fontFamily: 'BalooBhaijaan2_400Regular',
   },
 });

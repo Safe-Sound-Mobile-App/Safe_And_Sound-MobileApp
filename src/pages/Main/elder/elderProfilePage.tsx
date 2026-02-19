@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Image, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { profileStyles } from '../../../global_style/elderUseSection/elderProfileStyles';
 import GradientHeader from '../../../header/GradientHeader';
 import type { CompositeNavigationProp } from '@react-navigation/native';
@@ -8,6 +9,10 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList, MainTabParamList } from "../../../App";
 import {elderHomeStyles as styles} from "../../../global_style/elderUseSection/elderHomeStyles";
+import auth from '@react-native-firebase/auth';
+import { getUserProfile, getElderCaregivers, sendEmergencyAlert, updateProfileImage, updateBackgroundImage } from '../../../services/firestore';
+import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 
 // Import icons
 const accountIcon = require('../../../../assets/icons/profile/account.png');
@@ -39,51 +44,214 @@ interface UserProfile {
 }
 
 export default function ElderProfile({ navigation }: Props) {
-    const [profile, setProfile] = useState<UserProfile>({
-        firstName: 'Fname',
-        lastName: 'Lname',
-        uid: '000000000',
-        role: 'Elder',
-        tel: '0812345678',
-        caregiverCount: 3,
-        maxCaregivers: 5,
-        profileImage: null,
-        backgroundImage: null,
-    });
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const currentUser = auth().currentUser;
+            if (!currentUser) {
+                Alert.alert('Error', 'No authenticated user');
+                setLoading(false);
+                return;
+            }
+
+            try {
+                // Fetch user profile
+                const userResult = await getUserProfile(currentUser.uid);
+                if (!userResult.success || !userResult.data) {
+                    Alert.alert('Error', userResult.error || 'Failed to load profile');
+                    setLoading(false);
+                    return;
+                }
+
+                // Fetch caregiver count
+                const caregiversResult = await getElderCaregivers(currentUser.uid);
+                const caregiverCount = caregiversResult.success && caregiversResult.data ? caregiversResult.data.length : 0;
+
+                // Fetch elder background image from Firestore
+                const elderDoc = await import('@react-native-firebase/firestore')
+                    .then(f => f.default().collection('elders').doc(currentUser.uid).get());
+                const backgroundImageURL = elderDoc.data()?.backgroundImageURL || null;
+
+                setProfile({
+                    firstName: userResult.data.firstName,
+                    lastName: userResult.data.lastName,
+                    uid: currentUser.uid,
+                    role: 'Elder',
+                    tel: userResult.data.tel || 'N/A',
+                    caregiverCount: caregiverCount,
+                    maxCaregivers: 5,
+                    profileImage: userResult.data.photoURL ? { uri: userResult.data.photoURL } : null,
+                    backgroundImage: backgroundImageURL ? { uri: backgroundImageURL } : null,
+                });
+            } catch (error) {
+                console.error('Error fetching profile:', error);
+                Alert.alert('Error', 'An unexpected error occurred');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchProfile();
+    }, []);
 
     // Handle profile image upload
-    const handleProfileImageUpload = () => {
-        Alert.alert(
-            'Change Profile Picture',
-            'Choose an option',
-            [
-                { text: 'Take Photo', onPress: () => console.log('Take photo') },
-                { text: 'Choose from Gallery', onPress: () => console.log('Choose from gallery') },
-                { text: 'Cancel', style: 'cancel' }
-            ]
-        );
-        // TODO: Implement image picker
-        // const result = await ImagePicker.launchImageLibraryAsync({...});
+    const handleProfileImageUpload = async () => {
+        try {
+            // Request permission
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permissionResult.granted) {
+                Alert.alert('Permission Required', 'Please allow access to your photos');
+                return;
+            }
+
+            // Pick image
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [1, 1],
+                quality: 0.8,
+            });
+
+            if (result.canceled || !result.assets[0]) {
+                return;
+            }
+
+            const currentUser = auth().currentUser;
+            if (!currentUser) return;
+
+            // Show loading
+            Alert.alert('Uploading...', 'Please wait');
+
+            // Upload image
+            const uploadResult = await updateProfileImage(currentUser.uid, result.assets[0].uri);
+
+            if (uploadResult.success && uploadResult.data) {
+                // Update local state
+                setProfile(prev => prev ? {
+                    ...prev,
+                    profileImage: { uri: uploadResult.data }
+                } : null);
+                Alert.alert('Success', 'Profile image updated!');
+            } else {
+                Alert.alert('Error', uploadResult.error || 'Failed to upload image');
+            }
+        } catch (error) {
+            console.error('Error uploading profile image:', error);
+            Alert.alert('Error', 'An unexpected error occurred');
+        }
     };
 
     // Handle background image upload
-    const handleBackgroundImageUpload = () => {
-        Alert.alert(
-            'Change Background Picture',
-            'Choose an option',
-            [
-                { text: 'Take Photo', onPress: () => console.log('Take photo') },
-                { text: 'Choose from Gallery', onPress: () => console.log('Choose from gallery') },
-                { text: 'Cancel', style: 'cancel' }
-            ]
-        );
-        // TODO: Implement image picker
+    const handleBackgroundImageUpload = async () => {
+        try {
+            // Request permission
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!permissionResult.granted) {
+                Alert.alert('Permission Required', 'Please allow access to your photos');
+                return;
+            }
+
+            // Pick image
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'],
+                allowsEditing: true,
+                aspect: [16, 9],
+                quality: 0.8,
+            });
+
+            if (result.canceled || !result.assets[0]) {
+                return;
+            }
+
+            const currentUser = auth().currentUser;
+            if (!currentUser) return;
+
+            // Show loading
+            Alert.alert('Uploading...', 'Please wait');
+
+            // Upload image
+            const uploadResult = await updateBackgroundImage(currentUser.uid, 'elder', result.assets[0].uri);
+
+            if (uploadResult.success && uploadResult.data) {
+                // Update local state
+                setProfile(prev => prev ? {
+                    ...prev,
+                    backgroundImage: { uri: uploadResult.data }
+                } : null);
+                Alert.alert('Success', 'Background image updated!');
+            } else {
+                Alert.alert('Error', uploadResult.error || 'Failed to upload image');
+            }
+        } catch (error) {
+            console.error('Error uploading background image:', error);
+            Alert.alert('Error', 'An unexpected error occurred');
+        }
     };
 
     // Handle edit profile
     const handleEditProfile = () => {
         navigation.navigate('elderEditProfile' as any, { profile });
     };
+
+    // Copy UID to clipboard
+    const handleCopyUid = async () => {
+        if (profile?.uid) {
+            await Clipboard.setStringAsync(profile.uid);
+            Alert.alert('Copied!', 'UID copied to clipboard');
+        }
+    };
+
+    // Handle emergency
+    const handleEmergency = async () => {
+        const currentUser = auth().currentUser;
+        if (!currentUser || !profile) return;
+
+        Alert.alert(
+            'Emergency Alert',
+            'Are you sure you want to send an emergency alert to all your caregivers?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Send Alert',
+                    style: 'destructive',
+                    onPress: async () => {
+                        const elderName = `${profile.firstName} ${profile.lastName}`;
+                        const result = await sendEmergencyAlert(currentUser.uid, elderName);
+
+                        if (result.success) {
+                            Alert.alert('Alert Sent!', 'Emergency alert has been sent to all your caregivers.');
+                        } else {
+                            Alert.alert('Error', result.error || 'Failed to send emergency alert');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    if (loading) {
+        return (
+            <SafeAreaView style={profileStyles.container}>
+                <GradientHeader title="Safe & Sound" />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#008080" />
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    if (!profile) {
+        return (
+            <SafeAreaView style={profileStyles.container}>
+                <GradientHeader title="Safe & Sound" />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ color: '#6b7280' }}>Failed to load profile</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
 
     return (
         <SafeAreaView style={profileStyles.container}>
@@ -173,7 +341,35 @@ export default function ElderProfile({ navigation }: Props) {
                     <Text style={profileStyles.fullName}>
                         {profile.firstName} {profile.lastName}
                     </Text>
-                    <Text style={profileStyles.uid}>UID: {profile.uid}</Text>
+
+                    {/* UID Card */}
+                    <View style={{
+                        backgroundColor: '#f9fafb',
+                        borderRadius: 12,
+                        padding: 14,
+                        marginTop: 12,
+                        marginBottom: 8,
+                        borderWidth: 1,
+                        borderColor: '#e5e7eb',
+                    }}>
+                        <Text style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontWeight: '500' }}>Your UID</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <Text style={{ fontSize: 13, color: '#111827', fontFamily: 'monospace', flex: 1 }} numberOfLines={1}>
+                                {profile.uid}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={handleCopyUid}
+                                style={{
+                                    padding: 8,
+                                    backgroundColor: '#008080',
+                                    borderRadius: 8,
+                                    marginLeft: 8,
+                                }}
+                            >
+                                <Ionicons name="copy-outline" size={16} color="#fff" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
 
                     {/* Info Items */}
                     <View style={profileStyles.infoList}>
@@ -218,6 +414,7 @@ export default function ElderProfile({ navigation }: Props) {
             <View style={styles.emergencyContainer}>
                 <TouchableOpacity
                     style={styles.emergencyButton}
+                    onPress={handleEmergency}
                     activeOpacity={0.8}
                 >
                     <Text style={styles.emergencyText}>Emergency</Text>

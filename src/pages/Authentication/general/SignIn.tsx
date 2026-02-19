@@ -1,40 +1,102 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { signInStyles } from '../../../global_style/signInStyles';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
+import { signInWithEmail, signInWithGoogle } from '../../../services/auth';
+import { getUserProfile } from '../../../services/firestore';
 
 const googleIcon = require('../../../../assets/icons/google.png');
-const usernameIcon = require('../../../../assets/icons/username.png');
+const emailIcon = require('../../../../assets/icons/email.png');
 const passwordIcon = require('../../../../assets/icons/password.png');
 const eyeIcon = require('../../../../assets/icons/invisible.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignIn">;
 
 export default function SignIn({ navigation }: Props) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = () => {
-    console.log('Signing in with:', { username, password });
-    // Handle sign in logic here
+  const handleSignIn = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please enter email and password');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await signInWithEmail(email, password);
+      
+      if (result.success && result.user) {
+        // Check user profile in Firestore
+        const profileResult = await getUserProfile(result.user.uid);
+        
+        if (profileResult.success && profileResult.data) {
+          const userRole = profileResult.data.role;
+          
+          // Navigate based on role
+          if (userRole === 'elder') {
+            navigation.navigate('ElderMainTabs');
+          } else if (userRole === 'caregiver') {
+            navigation.navigate('MainTabs');
+          } else {
+            // No profile found, go to RoleSelection
+            navigation.navigate('RoleSelection');
+          }
+        } else {
+          // Profile not found, go to RoleSelection
+          navigation.navigate('RoleSelection');
+        }
+      } else {
+        Alert.alert('Error', result.error || 'Failed to sign in');
+      }
+    } catch (error: any) {
+      console.error('Sign in error:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSignUp = () => {
-    console.log('Navigating to SignUp...');
-    // navigation.navigate('SignUp');
-  };
-
-  const handleForgotPassword = () => {
-    console.log('Navigating to Forgot Password...');
-    // Handle forgot password logic
-  };
-
-  const handleGoogleSignIn = () => {
-    console.log('Google Sign In pressed');
-    // Handle Google sign in logic
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      
+      if (result.success && result.user) {
+        // Check user profile in Firestore
+        const profileResult = await getUserProfile(result.user.uid);
+        
+        if (profileResult.success && profileResult.data) {
+          const userRole = profileResult.data.role;
+          
+          // Navigate based on role
+          if (userRole === 'elder') {
+            navigation.navigate('ElderMainTabs');
+          } else if (userRole === 'caregiver') {
+            navigation.navigate('MainTabs');
+          } else {
+            // No profile found, go to RoleSelection
+            navigation.navigate('RoleSelection');
+          }
+        } else {
+          // Profile not found (new user), go to RoleSelection
+          navigation.navigate('RoleSelection');
+        }
+      } else {
+        if (result.error && !result.error.includes('cancelled')) {
+          Alert.alert('Error', result.error || 'Failed to sign in with Google');
+        }
+      }
+    } catch (error: any) {
+      console.error('Google sign in error:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -44,20 +106,22 @@ export default function SignIn({ navigation }: Props) {
         {/* Sign In Title */}
         <Text style={signInStyles.signInTitle}>SIGN IN</Text>
         
-        {/* Username Input */}
+        {/* Email Input */}
         <View style={signInStyles.inputContainer}>
             <Image 
-              source={usernameIcon} 
+              source={emailIcon} 
               style={signInStyles.inputIcon}
               resizeMode="contain"
             />
           <TextInput
             style={signInStyles.textInput}
-            placeholder="Username"
+            placeholder="Email"
             placeholderTextColor="#9ca3af"
-            value={username}
-            onChangeText={setUsername}
+            value={email}
+            onChangeText={setEmail}
             autoCapitalize="none"
+            keyboardType="email-address"
+            editable={!loading}
           />
         </View>
 
@@ -76,10 +140,12 @@ export default function SignIn({ navigation }: Props) {
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
             autoCapitalize="none"
+            editable={!loading}
           />
           <TouchableOpacity
             onPress={() => setShowPassword(!showPassword)}
             style={signInStyles.eyeIcon}
+            disabled={loading}
           >
             <Ionicons 
               name={showPassword ? "eye-outline" : "eye-off-outline"} 
@@ -90,17 +156,26 @@ export default function SignIn({ navigation }: Props) {
         </View>
 
         {/* Forgot Password */}
-        <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")} style={signInStyles.forgotPasswordContainer}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate("ForgotPassword")} 
+          style={signInStyles.forgotPasswordContainer}
+          disabled={loading}
+        >
           <Text style={signInStyles.forgotPasswordText}>Forgot Password?</Text>
         </TouchableOpacity>
 
         {/* Sign In Button */}
         <TouchableOpacity
-          style={signInStyles.signInSubmitButton}
+          style={[signInStyles.signInSubmitButton, loading && { opacity: 0.6 }]}
           onPress={handleSignIn}
           activeOpacity={0.8}
+          disabled={loading}
         >
-          <Text style={signInStyles.signInSubmitButtonText}>SIGN IN</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={signInStyles.signInSubmitButtonText}>SIGN IN</Text>
+          )}
         </TouchableOpacity>
 
         {/* Sign Up Link */}
@@ -120,18 +195,25 @@ export default function SignIn({ navigation }: Props) {
 
         {/* Google Sign In Button - New Design */}
         <TouchableOpacity
-          style={signInStyles.googleSignInButton}
+          style={[signInStyles.googleSignInButton, loading && { opacity: 0.6 }]}
           onPress={handleGoogleSignIn}
           activeOpacity={0.8}
+          disabled={loading}
         >
-          <View style={signInStyles.googleIconContainer}>
-            <Image 
-              source={googleIcon} 
-              style={signInStyles.googleIconImage}
-              resizeMode="contain"
-            />
-          </View>
-          <Text style={signInStyles.googleButtonText}>Sign in with Google</Text>
+          {loading ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <>
+              <View style={signInStyles.googleIconContainer}>
+                <Image 
+                  source={googleIcon} 
+                  style={signInStyles.googleIconImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={signInStyles.googleButtonText}>Sign in with Google</Text>
+            </>
+          )}
         </TouchableOpacity>
 
       </View>

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, KeyboardAvoidingView, Platform } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { chatStyles } from '../../../global_style/caregiverUseSection/caregiverChatStyles';
 import GradientHeader from '../../../header/GradientHeader';
@@ -27,6 +28,7 @@ interface ChatInfo {
 
 export default function CaregiverChat({ navigation, route }: Props) {
   const { elderId, elderName } = route.params || {};
+  const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
   
   const [chatInfo] = useState<ChatInfo>({
@@ -231,7 +233,7 @@ export default function CaregiverChat({ navigation, route }: Props) {
         </ScrollView>
 
         {/* Input Area */}
-        <View style={chatStyles.inputContainer}>
+        <View style={[chatStyles.inputContainer, { paddingBottom: Math.max(12, insets.bottom) }]}>
           <TextInput
             style={chatStyles.textInput}
             placeholder="Type message..."

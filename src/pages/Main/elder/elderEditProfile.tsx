@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { editProfileStyles } from '../../../global_style/caregiverUseSection/caregiverEditProfileStyles';
 import GradientHeader from '../../../header/GradientHeader';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
+import auth from '@react-native-firebase/auth';
+import { updateUserProfile } from '../../../services/firestore';
 
 // Import icons
 const nameIcon = require('../../../../assets/icons/profile/name.png');
@@ -22,6 +24,7 @@ export default function elderEditProfile({ navigation, route }: Props) {
         firstName: false,
         lastName: false,
     });
+    const [saving, setSaving] = useState(false);
 
     // Validate inputs
     const validateInputs = () => {
@@ -34,25 +37,46 @@ export default function elderEditProfile({ navigation, route }: Props) {
     };
 
     // Handle confirm
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         if (!validateInputs()) {
             Alert.alert('Error', 'Please fill in all required fields');
             return;
         }
 
-        // TODO: Save to backend
-        console.log('Saving profile:', { firstName, lastName, tel });
+        const currentUser = auth().currentUser;
+        if (!currentUser) {
+            Alert.alert('Error', 'No authenticated user');
+            return;
+        }
 
-        Alert.alert(
-            'Success',
-            'Profile updated successfully',
-            [
-                {
-                    text: 'OK',
-                    onPress: () => navigation.goBack()
-                }
-            ]
-        );
+        setSaving(true);
+        try {
+            const result = await updateUserProfile(currentUser.uid, {
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                tel: tel.trim() || undefined,
+            });
+
+            if (result.success) {
+                Alert.alert(
+                    'Success',
+                    'Profile updated successfully',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: () => navigation.goBack()
+                        }
+                    ]
+                );
+            } else {
+                Alert.alert('Error', result.error || 'Failed to update profile');
+            }
+        } catch (error) {
+            console.error('Update profile error:', error);
+            Alert.alert('Error', 'An unexpected error occurred');
+        } finally {
+            setSaving(false);
+        }
     };
 
     // Handle cancel
@@ -144,17 +168,23 @@ export default function elderEditProfile({ navigation, route }: Props) {
                     {/* Buttons */}
                     <View style={editProfileStyles.buttonContainer}>
                         <TouchableOpacity
-                            style={editProfileStyles.confirmButton}
+                            style={[editProfileStyles.confirmButton, saving && { opacity: 0.6 }]}
                             onPress={handleConfirm}
                             activeOpacity={0.8}
+                            disabled={saving}
                         >
-                            <Text style={editProfileStyles.confirmButtonText}>Confirm</Text>
+                            {saving ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={editProfileStyles.confirmButtonText}>Confirm</Text>
+                            )}
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             style={editProfileStyles.cancelButton}
                             onPress={handleCancel}
                             activeOpacity={0.8}
+                            disabled={saving}
                         >
                             <Text style={editProfileStyles.cancelButtonText}>Cancel</Text>
                         </TouchableOpacity>

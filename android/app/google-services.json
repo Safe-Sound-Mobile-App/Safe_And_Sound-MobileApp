@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "218489558221",
+    "project_id": "safe-and-sound-ske19",
+    "storage_bucket": "safe-and-sound-ske19.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:218489558221:android:907ba55abbef53032d4584",
+        "android_client_info": {
+          "package_name": "com.safeandsound.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "218489558221-mlm95hhg2sbplchn470rgjskkafl1etn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.safeandsound.app",
+            "certificate_hash": "44c71fd09a5b2763e1034935f0e3e3f406605487"
+          }
+        },
+        {
+          "client_id": "218489558221-mk7gp0j6f26o1irscrnb3aif0fb60jje.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVok0C1LYjq0reFchbNUJUeLEpWne1SXM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "218489558221-mk7gp0j6f26o1irscrnb3aif0fb60jje.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "218489558221-18egrq2tv93j67bdsn8lt7kfd7ucv9na.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.safeandsound.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

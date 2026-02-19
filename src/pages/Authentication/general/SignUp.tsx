@@ -1,42 +1,111 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, SafeAreaView, Image, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { signUpStyles } from '../../../global_style/signUpStyles';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
+import { signUpWithEmail, signInWithGoogle } from '../../../services/auth';
 
 const googleIcon = require('../../../../assets/icons/google.png');
-const usernameIcon = require('../../../../assets/icons/username.png');
+const emailIcon = require('../../../../assets/icons/email.png');
 const passwordIcon = require('../../../../assets/icons/password.png');
 const eyeIcon = require('../../../../assets/icons/invisible.png');
 
 type Props = NativeStackScreenProps<RootStackParamList, "SignUp">;
 
 export default function SignUp({ navigation }: Props) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = () => {
-    console.log('Signing in with:', { username, password });
-    // Handle sign in logic here
+  const validateInputs = (): boolean => {
+    if (!email.trim()) {
+      Alert.alert('Error', 'Please enter your email');
+      return false;
+    }
+
+    if (!email.includes('@')) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return false;
+    }
+
+    if (!password) {
+      Alert.alert('Error', 'Please enter your password');
+      return false;
+    }
+
+    if (password.length < 6) {
+      Alert.alert('Error', 'Password must be at least 6 characters');
+      return false;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
+      return false;
+    }
+
+    return true;
   };
 
-  const handleSignUp = () => {
-    console.log('Navigating to SignUp...');
-    navigation.navigate("RoleSelection");
+  const handleSignUp = async () => {
+    if (!validateInputs()) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const result = await signUpWithEmail(email.trim(), password);
+      
+      if (result.success) {
+        Alert.alert(
+          'Success',
+          'Account created successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate("RoleSelection"),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', result.error || 'Failed to create account');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+      console.error('Sign up error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleForgotPassword = () => {
-    console.log('Navigating to Forgot Password...');
-    // Handle forgot password logic
-  };
-
-  const handleGoogleSignIn = () => {
-    console.log('Google Sign In pressed');
-    // Handle Google sign in logic
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      const result = await signInWithGoogle();
+      
+      if (result.success) {
+        Alert.alert(
+          'Success',
+          'Signed in with Google successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.navigate("RoleSelection"),
+            },
+          ]
+        );
+      } else {
+        Alert.alert('Error', result.error || 'Failed to sign in with Google');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+      console.error('Google sign in error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -46,20 +115,22 @@ export default function SignUp({ navigation }: Props) {
         {/* Sign Up Title */}
         <Text style={signUpStyles.signUpTitle}>SIGN UP</Text>
         
-        {/* Username Input */}
+        {/* Email Input */}
         <View style={signUpStyles.inputContainer}>
             <Image 
-              source={usernameIcon} 
+              source={emailIcon} 
               style={signUpStyles.inputIcon}
               resizeMode="contain"
             />
           <TextInput
             style={signUpStyles.textInput}
-            placeholder="Username"
+            placeholder="Email"
             placeholderTextColor="#9ca3af"
-            value={username}
-            onChangeText={setUsername}
+            value={email}
+            onChangeText={setEmail}
             autoCapitalize="none"
+            keyboardType="email-address"
+            editable={!loading}
           />
         </View>
 
@@ -72,16 +143,18 @@ export default function SignUp({ navigation }: Props) {
             />
           <TextInput
             style={signUpStyles.textInput}
-            placeholder="Password"
+            placeholder="Password (at least 6 characters)"
             placeholderTextColor="#9ca3af"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
             autoCapitalize="none"
+            editable={!loading}
           />
           <TouchableOpacity
             onPress={() => setShowPassword(!showPassword)}
             style={signUpStyles.eyeIcon}
+            disabled={loading}
           >
             <Ionicons 
               name={showPassword ? "eye-outline" : "eye-off-outline"} 
@@ -106,10 +179,12 @@ export default function SignUp({ navigation }: Props) {
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirmPassword}
             autoCapitalize="none"
+            editable={!loading}
             />
             <TouchableOpacity
             onPress={() => setShowConfirmPassword(!showConfirmPassword)}
             style={signUpStyles.eyeIcon}
+            disabled={loading}
             >
             <Ionicons
                 name={showConfirmPassword ? "eye-outline" : "eye-off-outline"}
@@ -121,11 +196,16 @@ export default function SignUp({ navigation }: Props) {
 
         {/* Sign Up Button */}
         <TouchableOpacity
-          style={signUpStyles.signUpSubmitButton}
+          style={[signUpStyles.signUpSubmitButton, loading && { opacity: 0.6 }]}
           onPress={handleSignUp}
           activeOpacity={0.8}
+          disabled={loading}
         >
-          <Text style={signUpStyles.signUpSubmitButtonText}>SIGN UP</Text>
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={signUpStyles.signUpSubmitButtonText}>SIGN UP</Text>
+          )}
         </TouchableOpacity>
 
         {/* Sign In Link */}
@@ -145,18 +225,25 @@ export default function SignUp({ navigation }: Props) {
 
         {/* Google Sign In Button - New Design */}
         <TouchableOpacity
-          style={signUpStyles.googleSignInButton}
+          style={[signUpStyles.googleSignInButton, loading && { opacity: 0.6 }]}
           onPress={handleGoogleSignIn}
           activeOpacity={0.8}
+          disabled={loading}
         >
-          <View style={signUpStyles.googleIconContainer}>
-            <Image 
-              source={googleIcon} 
-              style={signUpStyles.googleIconImage}
-              resizeMode="contain"
-            />
-          </View>
-          <Text style={signUpStyles.googleButtonText}>Sign up with Google</Text>
+          {loading ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <>
+              <View style={signUpStyles.googleIconContainer}>
+                <Image 
+                  source={googleIcon} 
+                  style={signUpStyles.googleIconImage}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={signUpStyles.googleButtonText}>Sign up with Google</Text>
+            </>
+          )}
         </TouchableOpacity>
 
       </View>

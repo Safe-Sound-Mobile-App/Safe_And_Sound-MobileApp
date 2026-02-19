@@ -12,9 +12,13 @@ import {
     Pressable,
     Modal,
     useWindowDimensions,
+    Alert,
+    ActivityIndicator,
 } from "react-native";
 import Svg, { Path, Circle } from "react-native-svg";
 import { styles } from "../../../global_style/caregiverInfoForm.styles";
+import { createCaregiverProfile } from "../../../services/firestore";
+import auth from "@react-native-firebase/auth";
 
 // ---------- SVG Icons ----------
 function HelpIcon({ size = 20, color = "#6b7280" }) {
@@ -93,6 +97,9 @@ export default function CaregiverInfoForm({ navigation }: Props) {
     const [infoVisible, setInfoVisible] = useState(false);
     const [policyVisible, setPolicyVisible] = useState(false);
 
+    // loading state
+    const [loading, setLoading] = useState(false);
+
     const markTouched = (field: string) =>
         setTouched((t) => ({ ...t, [field]: true }));
 
@@ -126,11 +133,52 @@ export default function CaregiverInfoForm({ navigation }: Props) {
         !errors.tel &&
         agree;
 
-    const onConfirm = () => {
+    const onConfirm = async () => {
         if (!canSubmit) return;
-        const payload = { firstName, lastName, tel };
-        console.log("Submitting Caregiver:", payload);
-        // navigation.navigate("NextScreen");
+        
+        setLoading(true);
+        try {
+            const user = auth().currentUser;
+            if (!user) {
+                Alert.alert("Error", "No authenticated user found");
+                setLoading(false);
+                return;
+            }
+
+            // Determine auth provider
+            const authProvider = user.providerData[0]?.providerId === 'google.com' ? 'google' : 'email';
+
+            // Create caregiver profile in Firestore
+            const result = await createCaregiverProfile(
+                user.uid,
+                {
+                    firstName,
+                    lastName,
+                    tel: tel || null,
+                },
+                authProvider
+            );
+
+            if (result.success) {
+                Alert.alert(
+                    "Success",
+                    "Caregiver profile created successfully!",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () => navigation.navigate("MainTabs"),
+                        },
+                    ]
+                );
+            } else {
+                Alert.alert("Error", result.error || "Failed to create profile");
+            }
+        } catch (error: any) {
+            console.error("Error creating caregiver profile:", error);
+            Alert.alert("Error", "An unexpected error occurred");
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -204,13 +252,17 @@ export default function CaregiverInfoForm({ navigation }: Props) {
                         {/* Confirm (always visible, greyed out until valid) */}
                         <TouchableOpacity
                             onPress={onConfirm}
-                            disabled={!canSubmit}
+                            disabled={!canSubmit || loading}
                             style={[
                                 styles.confirmBtn,
-                                !canSubmit && { backgroundColor: "#9ca3af" },
+                                (!canSubmit || loading) && { backgroundColor: "#9ca3af" },
                             ]}
                         >
-                            <Text style={styles.confirmText}>Confirm</Text>
+                            {loading ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.confirmText}>Confirm</Text>
+                            )}
                         </TouchableOpacity>
                     </View>
                 </ScrollView>

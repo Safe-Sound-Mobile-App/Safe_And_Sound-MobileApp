@@ -1,8 +1,17 @@
 import * as React from "react";
+import { useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { ActivityIndicator, View, Platform } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as NavigationBar from "expo-navigation-bar";
 import BottomNavbar from "./navigation/BottomNavbar";
+import auth from "@react-native-firebase/auth";
+import { getUserProfile } from "./services/firestore";
+import { registerForPushNotifications, setupFCMHandlers } from "./services/messaging";
+import { AccessibilityProvider } from "./contexts/AccessibilityContext";
+import { NotificationBadgeProvider } from "./contexts/NotificationBadgeContext";
 
 // Authentication screens (no navbar)
 import Home from "./pages/Authentication/general/HomePage";
@@ -33,6 +42,19 @@ import caregiverEditProfile from "./pages/Main/caregiver/caregiverEditProfile";
 import elderEditProfile from "./pages/Main/elder/elderEditProfile";
 import CaregiverChat from "./pages/Main/caregiver/caregiverChat";
 import CaregiverElderInfo from "./pages/Main/caregiver/caregiverElderInfo";
+
+// Chat screens
+import CaregiverChatPage from "./pages/Main/caregiver/CaregiverChatPage";
+import ElderChatPage from "./pages/Main/elder/ElderChatPage";
+
+// Settings screens
+import CaregiverAccountManagePage from "./pages/Settings/CaregiverAccountManagePage";
+import ElderAccountManagePage from "./pages/Settings/ElderAccountManagePage";
+import NotificationSettingsPage from "./pages/Settings/NotificationSettingsPage";
+import AccessibilityPage from "./pages/Settings/AccessibilityPage";
+import PrivacyPage from "./pages/Settings/PrivacyPage";
+import HelpSupportPage from "./pages/Settings/HelpSupportPage";
+import AboutPage from "./pages/Settings/AboutPage";
 
 export type RootStackParamList = {
   // Authentication Stack
@@ -68,6 +90,19 @@ export type RootStackParamList = {
   AddNewElder: undefined;
   caregiverChat: { elderId: string; elderName: string};
   caregiverElderInfo: { elderId: string };
+  
+  // Chat Screens
+  CaregiverChatPage: { elderId: string; elderName: string };
+  ElderChatPage: { caregiverId: string; caregiverName: string };
+  
+  // Settings Screens
+  CaregiverAccountManage: undefined;
+  ElderAccountManage: undefined;
+  NotificationSettings: undefined;
+  Accessibility: undefined;
+  Privacy: undefined;
+  HelpSupport: undefined;
+  About: undefined;
 };
 
 export type MainTabParamList = {
@@ -151,34 +186,131 @@ function ElderMainTabs() {
 }
 
 export default function App() {
+  const [initializing, setInitializing] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  // Set navigation bar to transparent background with dark buttons
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      // Use rgba format for transparent background
+      NavigationBar.setBackgroundColorAsync('rgba(0,0,0,0)');
+      NavigationBar.setButtonStyleAsync('dark'); // This makes the buttons dark gray
+    }
+  }, []);
+
+  // Setup FCM handlers once when app starts
+  useEffect(() => {
+    let cleanup: (() => void) | null = null;
+    
+    setupFCMHandlers().then((cleanupFn) => {
+      cleanup = cleanupFn;
+    }).catch((error) => {
+      console.error('Failed to setup FCM handlers:', error);
+    });
+
+    return () => {
+      if (cleanup) cleanup();
+    };
+  }, []);
+
+  // Auth state listener
+  useEffect(() => {
+    const subscriber = auth().onAuthStateChanged(async (firebaseUser) => {
+      setUser(firebaseUser);
+
+      if (firebaseUser) {
+        // User is logged in, check their profile
+        const profileResult = await getUserProfile(firebaseUser.uid);
+        
+        if (profileResult.success && profileResult.data) {
+          setUserRole(profileResult.data.role);
+        } else {
+          setUserRole(null);
+        }
+        // Register for push notifications (FCM token saved to Firestore)
+        registerForPushNotifications().catch(() => {});
+      } else {
+        // User is logged out
+        setUserRole(null);
+      }
+
+      if (initializing) setInitializing(false);
+    });
+
+    return subscriber; // unsubscribe on unmount
+  }, []);
+
+  // Show loading screen while checking auth state
+  if (initializing) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f3f4f6' }}>
+        <ActivityIndicator size="large" color="#111827" />
+      </View>
+    );
+  }
+
+  // Determine initial route based on auth state
+  const getInitialRouteName = () => {
+    if (user && userRole === 'elder') {
+      return 'ElderMainTabs';
+    } else if (user && userRole === 'caregiver') {
+      return 'MainTabs';
+    } else if (user && !userRole) {
+      return 'RoleSelection';
+    } else {
+      return 'Home';
+    }
+  };
+
   return (
-    <NavigationContainer linking={linking}>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        {/* Authentication Screens - NO NAVBAR */}
-        <Stack.Screen name="Home" component={Home} />
-        <Stack.Screen name="SignIn" component={SignIn} />
-        <Stack.Screen name="SignUp" component={SignUp} />
-        <Stack.Screen name="RoleSelection" component={RoleSelection} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
-        <Stack.Screen name="NewPassword" component={NewPassword} />
-        <Stack.Screen name="ElderInfoForm" component={ElderInfoForm} />
-        <Stack.Screen name="CaregiverInfoForm" component={CaregiverInfoForm} />
+    <SafeAreaProvider>
+      <AccessibilityProvider>
+        <NotificationBadgeProvider>
+          <NavigationContainer linking={linking}>
+        <Stack.Navigator
+          initialRouteName={getInitialRouteName()}
+          screenOptions={{
+            headerShown: false,
+          }}
+        >
+          {/* Authentication Screens - NO NAVBAR */}
+          <Stack.Screen name="Home" component={Home} />
+          <Stack.Screen name="SignIn" component={SignIn} />
+          <Stack.Screen name="SignUp" component={SignUp} />
+          <Stack.Screen name="RoleSelection" component={RoleSelection} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPassword} />
+          <Stack.Screen name="NewPassword" component={NewPassword} />
+          <Stack.Screen name="ElderInfoForm" component={ElderInfoForm} />
+          <Stack.Screen name="CaregiverInfoForm" component={CaregiverInfoForm} />
 
-        {/* Main App with Tabs - HAS NAVBAR */}
-        <Stack.Screen name="MainTabs" component={MainTabs} />
-        <Stack.Screen name="ElderMainTabs" component={ElderMainTabs} />
+          {/* Main App with Tabs - HAS NAVBAR */}
+          <Stack.Screen name="MainTabs" component={MainTabs} />
+          <Stack.Screen name="ElderMainTabs" component={ElderMainTabs} />
 
-        {/* Modal/Full-screen pages - NO NAVBAR */}
-        <Stack.Screen name="AddNewElder" component={AddNewElder} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="caregiverEditProfile" component={caregiverEditProfile} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="elderEditProfile" component={elderEditProfile} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="caregiverChat" component={CaregiverChat} options={{ presentation: 'card'}}/>
-        <Stack.Screen name="caregiverElderInfo" component={CaregiverElderInfo} options={{ presentation: 'card'}}/>
-      </Stack.Navigator>
-    </NavigationContainer>
+          {/* Modal/Full-screen pages - NO NAVBAR */}
+          <Stack.Screen name="AddNewElder" component={AddNewElder} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="caregiverEditProfile" component={caregiverEditProfile} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="elderEditProfile" component={elderEditProfile} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="caregiverChat" component={CaregiverChat} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="caregiverElderInfo" component={CaregiverElderInfo} options={{ presentation: 'card'}}/>
+          
+          {/* Chat Screens */}
+          <Stack.Screen name="CaregiverChatPage" component={CaregiverChatPage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="ElderChatPage" component={ElderChatPage} options={{ presentation: 'card'}}/>
+          
+          {/* Settings Screens */}
+          <Stack.Screen name="CaregiverAccountManage" component={CaregiverAccountManagePage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="ElderAccountManage" component={ElderAccountManagePage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="NotificationSettings" component={NotificationSettingsPage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="Accessibility" component={AccessibilityPage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="Privacy" component={PrivacyPage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="HelpSupport" component={HelpSupportPage} options={{ presentation: 'card'}}/>
+          <Stack.Screen name="About" component={AboutPage} options={{ presentation: 'card'}}/>
+        </Stack.Navigator>
+          </NavigationContainer>
+        </NotificationBadgeProvider>
+      </AccessibilityProvider>
+    </SafeAreaProvider>
   );
 }

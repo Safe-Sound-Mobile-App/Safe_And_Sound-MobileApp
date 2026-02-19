@@ -20,7 +20,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
 import auth from '@react-native-firebase/auth';
-import { getCaregiverElders, getUserProfile, listenToEmergencyAlerts, resolveEmergencyAlert, EmergencyAlert } from '../../../services/firestore';
+import { getCaregiverElders, getUserProfile, listenToEmergencyAlerts, resolveEmergencyAlert, EmergencyAlert, getLatestHealthData, listenToHealthData } from '../../../services/firestore';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const addIcon = require('../../../../assets/icons/plus.png');
@@ -88,14 +88,25 @@ export default function CaregiverHomepage({ navigation }: Props) {
               ? { uri: userResult.data.photoURL }
               : require('../../../../assets/icons/elder.png');
 
+            // Get latest health data from healthData collection
+            const healthDataResult = await getLatestHealthData(elder.userId);
+            const healthData = healthDataResult.success && healthDataResult.data 
+              ? healthDataResult.data
+              : {
+                  status: 'Not Wearing' as const,
+                  heartRate: 0,
+                  spO2: 0,
+                  gyroscope: 'Normal' as const,
+                };
+
             return {
               id: elder.userId,
               name: userName,
               image: profileImage,
-              risk: elder.currentHealthStatus?.risk ?? 'Not Wearing',
-              gyroscope: elder.currentHealthStatus?.gyroscope ?? 'Normal',
-              heartRate: elder.currentHealthStatus?.heartRate ?? 0,
-              spO2: elder.currentHealthStatus?.spO2 ?? 0,
+              risk: healthData.status,
+              gyroscope: healthData.gyroscope,
+              heartRate: healthData.heartRate,
+              spO2: healthData.spO2,
             };
           })
         );
@@ -112,6 +123,44 @@ export default function CaregiverHomepage({ navigation }: Props) {
       setLoading(false);
     }
   }, []);
+
+  // Set up real-time listeners for health data
+  useEffect(() => {
+    const currentUser = auth().currentUser;
+    if (!currentUser || elderData.length === 0) return;
+
+    const unsubscribes: (() => void)[] = [];
+
+    // Set up listeners for each elder's health data
+    elderData.forEach((elder) => {
+      const unsubscribe = listenToHealthData(
+        elder.id,
+        (healthData) => {
+          setElderData((prevData) =>
+            prevData.map((item) =>
+              item.id === elder.id
+                ? {
+                    ...item,
+                    risk: healthData.status,
+                    gyroscope: healthData.gyroscope,
+                    heartRate: healthData.heartRate,
+                    spO2: healthData.spO2,
+                  }
+                : item
+            )
+          );
+        },
+        (error) => {
+          console.error(`Error listening to health data for ${elder.id}:`, error);
+        }
+      );
+      unsubscribes.push(unsubscribe);
+    });
+
+    return () => {
+      unsubscribes.forEach((unsubscribe) => unsubscribe());
+    };
+  }, [elderData.map(e => e.id).join(',')]); // Re-setup listeners when elder IDs change
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -343,7 +392,7 @@ export default function CaregiverHomepage({ navigation }: Props) {
                   {elder.risk !== 'Not Wearing' && elder.gyroscope !== 'Normal' && (
                     <Image 
                         source={hexagonIcon} 
-                        style={{ width: 12, height: 12, tintColor: elder.gyroscope === 'Fell' ? '#f59e0b' : '#6b7280' }}
+                        style={{ width: 12, height: 12, tintColor: elder.gyroscope === 'Fall' ? '#f59e0b' : '#6b7280' }}
                         resizeMode="contain"
                     />
                   )}

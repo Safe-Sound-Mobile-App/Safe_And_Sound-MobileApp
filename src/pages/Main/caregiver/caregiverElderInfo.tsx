@@ -17,7 +17,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
 import { caregiverElderInfoStyles } from '../../../global_style/caregiverUseSection/caregiverElderInfoStyles';
-import { getElderById, getUserProfile, getHealthHistory } from '../../../services/firestore';
+import firestore from '@react-native-firebase/firestore';
+import { getElderById, getUserProfile, getHealthHistory, getLatestHealthData, listenToHealthData, HealthRecord } from '../../../services/firestore';
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const diamondIcon = require('../../../../assets/icons/alert/diamond-exclamation.png');
@@ -73,10 +74,11 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const [elderRes, userRes, historyRes] = await Promise.all([
+        const [elderRes, userRes, historyRes, healthDataRes] = await Promise.all([
           getElderById(elderId),
           getUserProfile(elderId),
           getHealthHistory(elderId, 7),
+          getLatestHealthData(elderId),
         ]);
         if (cancelled) return;
         if (!elderRes.success || !elderRes.data) {
@@ -88,18 +90,44 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
         const user = userRes.success && userRes.data ? userRes.data : null;
         const fullName = user ? `${user.firstName} ${user.lastName}`.trim() || 'Unknown' : 'Unknown';
         const profileImage = user?.photoURL ? { uri: user.photoURL } : defaultElderImage;
-        const status = elder.currentHealthStatus;
-        const risk = status?.risk ?? 'Not Wearing';
-        const heartRate = status?.heartRate ?? 0;
-        const spO2 = status?.spO2 ?? 0;
-        const gyroscope = status?.gyroscope ?? 'Normal';
+        
+        // Get health data from healthData collection
+        const healthData = healthDataRes.success && healthDataRes.data 
+          ? healthDataRes.data
+          : {
+              status: 'Not Wearing' as const,
+              heartRate: 0,
+              spO2: 0,
+              gyroscope: 'Normal' as const,
+            };
+        
+        const risk = healthData.status;
+        const heartRate = healthData.heartRate;
+        const spO2 = healthData.spO2;
+        const gyroscope = healthData.gyroscope;
         const records = historyRes.success && historyRes.data ? historyRes.data : [];
+        // Extract heartRate and spO2 from records (may be in sensorPayload.vitals)
         const heartRateHistory = records.length > 0
-          ? records.map((r) => r.heartRate)
-          : [heartRate, heartRate, heartRate, heartRate, heartRate, heartRate, heartRate].filter(Boolean);
+          ? records.map((r: any) => {
+              // Check if data is in sensorPayload structure
+              if (r.sensorPayload?.vitals?.heartRate !== undefined) {
+                return Number(r.sensorPayload.vitals.heartRate) || 0;
+              }
+              // Fallback to direct heartRate field
+              return Number(r.heartRate) || 0;
+            })
+          : [];
         const spO2History = records.length > 0
-          ? records.map((r) => r.spO2)
-          : [spO2, spO2, spO2, spO2, spO2, spO2, spO2].filter(Boolean);
+          ? records.map((r: any) => {
+              // Check if data is in sensorPayload structure
+              const vitals = r.sensorPayload?.vitals || {};
+              if (vitals.spo2 !== undefined || vitals.spO2 !== undefined) {
+                return Number(vitals.spo2 || vitals.spO2) || 0;
+              }
+              // Fallback to direct spO2 field
+              return Number(r.spO2) || 0;
+            })
+          : [];
         const loc = elder.currentLocation;
         setElderData({
           id: elder.userId,
@@ -124,7 +152,99 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+
+    // Set up real-time listener for health data
+    const unsubscribeHealth = listenToHealthData(
+      elderId,
+      (healthData) => {
+        if (!cancelled) {
+          setElderData((prev) => {
+            if (!prev) return null;
+            return {
+              ...prev,
+              risk: healthData.status,
+              gyroscope: healthData.gyroscope,
+              heartRate: healthData.heartRate,
+              spO2: healthData.spO2,
+            };
+          });
+        }
+      },
+      (error) => {
+        console.error('Error listening to health data:', error);
+      }
+    );
+
+    // Set up real-time listener for health history (for graphs)
+    const unsubscribeHistory = firestore()
+      .collection('healthData')
+      .doc(elderId)
+      .collection('records')
+      .orderBy('recordedAt', 'desc')
+      .limit(7)
+      .onSnapshot(
+        (snapshot) => {
+          if (!cancelled) {
+            const records = snapshot.docs.map((doc) => ({
+              ...doc.data(),
+              id: doc.id,
+            })) as unknown as HealthRecord[];
+            const reversedRecords = records.reverse();
+            // Extract heartRate and spO2 from records (may be in sensorPayload.vitals)
+            const heartRateHistory = reversedRecords.length > 0
+              ? reversedRecords.map((r: any) => {
+                  // Check if data is in sensorPayload structure
+                  if (r.sensorPayload?.vitals?.heartRate !== undefined) {
+                    return Number(r.sensorPayload.vitals.heartRate) || 0;
+                  }
+                  // Fallback to direct heartRate field
+                  return Number(r.heartRate) || 0;
+                }).slice(-7)
+              : [];
+            const spO2History = reversedRecords.length > 0
+              ? reversedRecords.map((r: any) => {
+                  // Check if data is in sensorPayload structure
+                  const vitals = r.sensorPayload?.vitals || {};
+                  if (vitals.spo2 !== undefined || vitals.spO2 !== undefined) {
+                    return Number(vitals.spo2 || vitals.spO2) || 0;
+                  }
+                  // Fallback to direct spO2 field
+                  return Number(r.spO2) || 0;
+                }).slice(-7)
+              : [];
+            
+            setElderData((prev) => {
+              if (!prev) return null;
+              // Ensure we have at least 2 points for chart (or use current values)
+              const hrData = heartRateHistory.length >= 2 
+                ? heartRateHistory 
+                : heartRateHistory.length === 1 
+                  ? [heartRateHistory[0], heartRateHistory[0]]
+                  : [prev.heartRate, prev.heartRate];
+              const spO2Data = spO2History.length >= 2 
+                ? spO2History 
+                : spO2History.length === 1 
+                  ? [spO2History[0], spO2History[0]]
+                  : [prev.spO2, prev.spO2];
+              
+              return {
+                ...prev,
+                heartRateHistory: hrData,
+                spO2History: spO2Data,
+              };
+            });
+          }
+        },
+        (error) => {
+          console.error('Error listening to health history:', error);
+        }
+      );
+
+    return () => {
+      cancelled = true;
+      unsubscribeHealth();
+      unsubscribeHistory();
+    };
   }, [elderId]);
 
   const getRiskColor = (risk: string) => {
@@ -244,7 +364,7 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
       >
         <View style={[caregiverElderInfoStyles.elderCard, { backgroundColor: cardBackgroundColor }]}>
           <View style={caregiverElderInfoStyles.cardHeader}>
-            <Image source={elderData.image} style={caregiverElderInfoStyles.elderImage} resizeMode="cover" />
+            <Image source={elderData.image} style={caregiverElderInfoStyles.elderImage as any} resizeMode="cover" />
             <View style={caregiverElderInfoStyles.elderInfo}>
               <View style={caregiverElderInfoStyles.elderNameRow}>
                 <Text style={caregiverElderInfoStyles.elderName}>{elderData.name}</Text>
@@ -347,10 +467,103 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
                     <Image source={copyIcon} style={{ width: 16, height: 16, tintColor: '#374151' }} resizeMode="contain" />
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={caregiverElderInfoStyles.mapContainer} onPress={openInMaps} activeOpacity={0.8}>
-                  <View style={[caregiverElderInfoStyles.mapImage, { backgroundColor: '#e5e7eb', justifyContent: 'center', alignItems: 'center' }]}>
-                    <Image source={mapMarkerIcon} style={{ width: 48, height: 48, tintColor: '#ef4444' }} resizeMode="contain" />
-                    <Text style={{ marginTop: 8, color: '#6b7280', fontSize: 12 }}>Tap to open in Maps</Text>
+                <TouchableOpacity 
+                  style={caregiverElderInfoStyles.mapContainer} 
+                  onPress={openInMaps}
+                  activeOpacity={0.9}
+                >
+                  <View style={{ width: '100%', height: '100%', backgroundColor: '#d1fae5', position: 'relative', overflow: 'hidden', borderRadius: 10 }}>
+                    {/* Styled map preview with marker */}
+                    <View style={{
+                      width: '100%',
+                      height: '100%',
+                      backgroundColor: '#d1fae5',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      position: 'relative',
+                    }}>
+                      {/* Decorative grid pattern */}
+                      <View style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        opacity: 0.15,
+                        backgroundColor: 'transparent',
+                        borderStyle: 'dashed',
+                        borderWidth: 1,
+                        borderColor: '#059669',
+                      }} />
+                      
+                      {/* Map marker */}
+                      <View style={{ alignItems: 'center', zIndex: 1 }}>
+                        <Image 
+                          source={mapMarkerIcon} 
+                          style={{ width: 56, height: 56, tintColor: '#ef4444' }} 
+                          resizeMode="contain" 
+                        />
+                        <View style={{
+                          marginTop: 12,
+                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                          paddingVertical: 8,
+                          paddingHorizontal: 14,
+                          borderRadius: 8,
+                          shadowColor: '#000',
+                          shadowOffset: { width: 0, height: 2 },
+                          shadowOpacity: 0.1,
+                          shadowRadius: 4,
+                          elevation: 3,
+                          minWidth: 180,
+                        }}>
+                          <Text style={{ color: '#374151', fontSize: 11, fontFamily: 'monospace', textAlign: 'center', fontWeight: '600' }}>
+                            {elderData.location.latitude.toFixed(6)}
+                          </Text>
+                          <Text style={{ color: '#374151', fontSize: 11, fontFamily: 'monospace', textAlign: 'center', fontWeight: '600' }}>
+                            {elderData.location.longitude.toFixed(6)}
+                          </Text>
+                        </View>
+                      </View>
+                      
+                      {/* Compass icon */}
+                      <View style={{
+                        position: 'absolute',
+                        top: 10,
+                        right: 10,
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 2,
+                        elevation: 2,
+                      }}>
+                        <Text style={{ fontSize: 20 }}>🧭</Text>
+                      </View>
+                    </View>
+                    <View style={{
+                      position: 'absolute',
+                      bottom: 10,
+                      right: 10,
+                      backgroundColor: 'rgba(0, 128, 128, 0.95)',
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: 8,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.25,
+                      shadowRadius: 3.84,
+                      elevation: 5,
+                    }}>
+                      <Image source={mapMarkerIcon} style={{ width: 16, height: 16, tintColor: '#fff' }} resizeMode="contain" />
+                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 6 }}>Tap to open</Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               </>

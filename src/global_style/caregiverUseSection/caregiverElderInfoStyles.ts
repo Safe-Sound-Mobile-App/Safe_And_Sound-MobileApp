@@ -201,15 +201,16 @@ export const caregiverElderInfoStyles = StyleSheet.create({
   // Map Styles
   mapContainer: {
     width: '100%',
-    height: 0,
+    height: 200,
     borderRadius: 10,
     overflow: 'hidden',
     position: 'relative',
     backgroundColor: '#e5e7eb',
+    marginTop: 10,
   },
   mapImage: {
     width: '100%',
-    // height: '100%',
+    height: '100%',
   },
   mapMarkerOverlay: {
     position: 'absolute',

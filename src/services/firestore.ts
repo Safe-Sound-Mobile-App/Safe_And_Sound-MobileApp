@@ -507,6 +507,136 @@ export const createHealthRecord = async (
 };
 
 /**
+ * Normalize status string to proper format
+ */
+const normalizeStatus = (statusRaw: any): 'Normal' | 'Warning' | 'Danger' | 'Not Wearing' => {
+  if (!statusRaw || typeof statusRaw !== 'string') {
+    return 'Not Wearing';
+  }
+  
+  const normalized = statusRaw.replace(/_/g, ' ').trim().toLowerCase();
+  
+  if (normalized === 'not wearing' || normalized === 'not_wearing' || normalized === 'notwearing') {
+    return 'Not Wearing';
+  } else if (normalized === 'normal') {
+    return 'Normal';
+  } else if (normalized === 'warning') {
+    return 'Warning';
+  } else if (normalized === 'danger') {
+    return 'Danger';
+  }
+  
+  return 'Not Wearing';
+};
+
+/**
+ * Parse health data from healthData document
+ */
+const parseHealthData = (data: any): {
+  status: 'Normal' | 'Warning' | 'Danger' | 'Not Wearing';
+  heartRate: number;
+  spO2: number;
+  gyroscope: 'Normal' | 'Fall';
+} => {
+  const sensorPayload = data?.sensorPayload || {};
+  const health = sensorPayload.health || {};
+  const vitals = sensorPayload.vitals || {};
+  const aiPrediction = data?.aiPrediction || {};
+
+  // Get status from sensorPayload.health.status or aiPrediction.status
+  const statusRaw = health.status || aiPrediction.status || 'Not Wearing';
+  const status = normalizeStatus(statusRaw);
+
+  // Get vitals
+  const heartRate = vitals.heartRate || 0;
+  const spO2 = vitals.spo2 || vitals.spO2 || 0;
+
+  // Determine gyroscope: if status is danger, show "Fall", otherwise "Normal"
+  const gyroscope = status === 'Danger' ? 'Fall' : 'Normal';
+
+  return {
+    status,
+    heartRate: Number(heartRate) || 0,
+    spO2: Number(spO2) || 0,
+    gyroscope,
+  };
+};
+
+/**
+ * Get latest health data from healthData collection (sensorPayload structure)
+ */
+export const getLatestHealthData = async (
+  elderId: string
+): Promise<ServiceResult<{
+  status: 'Normal' | 'Warning' | 'Danger' | 'Not Wearing';
+  heartRate: number;
+  spO2: number;
+  gyroscope: 'Normal' | 'Fall';
+}>> => {
+  try {
+    const doc = await firestore()
+      .collection('healthData')
+      .doc(elderId)
+      .get();
+
+    if (!doc.exists) {
+      return {
+        success: false,
+        error: 'Health data not found',
+      };
+    }
+
+    const data = doc.data();
+    const healthData = parseHealthData(data);
+
+    return {
+      success: true,
+      data: healthData,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to get latest health data',
+    };
+  }
+};
+
+/**
+ * Listen to real-time health data updates from healthData collection
+ */
+export const listenToHealthData = (
+  elderId: string,
+  onUpdate: (data: {
+    status: 'Normal' | 'Warning' | 'Danger' | 'Not Wearing';
+    heartRate: number;
+    spO2: number;
+    gyroscope: 'Normal' | 'Fall';
+  }) => void,
+  onError: (error: string) => void
+): (() => void) => {
+  const unsubscribe = firestore()
+    .collection('healthData')
+    .doc(elderId)
+    .onSnapshot(
+      (doc) => {
+        if (doc.exists) {
+          const data = doc.data();
+          const healthData = parseHealthData(data);
+          onUpdate(healthData);
+        } else {
+          onError('Health data document not found');
+        }
+      },
+      (error) => {
+        console.error('Error listening to health data:', error);
+        onError(error.message || 'Failed to listen to health data');
+      }
+    );
+
+  return unsubscribe;
+};
+
+/**
  * Get health history for charts
  */
 export const getHealthHistory = async (

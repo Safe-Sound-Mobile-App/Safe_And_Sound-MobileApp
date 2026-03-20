@@ -3,13 +3,13 @@ import { useEffect, useState } from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { ActivityIndicator, View, Platform } from "react-native";
+import { ActivityIndicator, View, Platform, AppState } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as NavigationBar from "expo-navigation-bar";
 import BottomNavbar from "./navigation/BottomNavbar";
 import auth from "@react-native-firebase/auth";
 import { getUserProfile } from "./services/firestore";
-import { registerForPushNotifications, setupFCMHandlers } from "./services/messaging";
+import { registerForPushNotifications, setupFCMHandlers, refreshFcmTokenOnForeground } from "./services/messaging";
 import { AccessibilityProvider } from "./contexts/AccessibilityContext";
 import { NotificationBadgeProvider } from "./contexts/NotificationBadgeContext";
 
@@ -212,6 +212,16 @@ export default function App() {
     return () => {
       if (cleanup) cleanup();
     };
+  }, []);
+
+  // When app comes to foreground: refresh FCM token so Cloud never sends to stale token
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state: string) => {
+      if (state === 'active') {
+        refreshFcmTokenOnForeground().catch(() => {});
+      }
+    });
+    return () => sub.remove();
   }, []);
 
   // Auth state listener

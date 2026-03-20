@@ -1,6 +1,9 @@
 <resources>
-  <string name="app_name">Safe_And_Sound-MobileApp</string>
+  <string name="app_name">Safe &amp; Sound</string>
   <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
   <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
   <string name="expo_runtime_version">1.0.0</string>
+  <string name="expo_navigation_bar_visibility" translatable="false">visible</string>
+  <string name="expo_navigation_bar_position" translatable="false">absolute</string>
+  <string name="expo_navigation_bar_behavior" translatable="false">insets</string>
 </resources>

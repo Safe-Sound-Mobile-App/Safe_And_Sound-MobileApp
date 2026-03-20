@@ -345,6 +345,12 @@ Users can register and sign in as either:
    - Verify user authentication status
    - Check console for Firestore errors
 
+5. **Push Notifications Not Showing (Cloud Log Shows Success)**
+   - **Permission**: On Android 13+, ensure "Notifications" is allowed in app Settings. Open app → Settings → Notifications (or system Settings → Apps → Safe & Sound → Notifications) and enable.
+   - **Battery / Doze**: Some manufacturers (Xiaomi, Huawei, Oppo, Samsung, etc.) restrict background apps. Disable "Battery optimization" or "Battery saver" for Safe & Sound so the system can deliver FCM.
+   - **Token**: The app refreshes the FCM token when it comes to foreground. If you reinstalled the app or cleared data, open the app once and stay on a screen for a few seconds so the token is saved; then test push again.
+   - **Multiple notifications**: Each notification is sent with a unique tag so they don’t collapse. If some still don’t appear, check device notification settings for the app (sound, pop-up, lock screen).
+
 ## 📝 Scripts
 
 - `npm start`: Start Expo development server

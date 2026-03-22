@@ -1,6 +1,6 @@
 # Safe & Sound Mobile App
 
-A comprehensive mobile application for monitoring and managing elderly care, connecting caregivers with elders through real-time health monitoring, location tracking, and communication features.
+A comprehensive mobile application for monitoring and managing elderly care, connecting caregivers with elders through real-time health monitoring, location tracking, and notification features.
 
 ## 📱 Overview
 
@@ -11,9 +11,6 @@ Safe & Sound is a React Native mobile application built with Expo that enables c
 - **Real-time Health Monitoring**: Track vital signs (Heart Rate, SpO2) and movement status (Gyroscope) with live updates
 - **Location Tracking**: Monitor elder location with GPS tracking and map visualization
 - **Health Status Alerts**: Visual indicators for Normal, Warning, Danger, and Not Wearing statuses
-- **Interactive Charts**: Display 7 latest data points for Heart Rate and SpO2 trends
-- **In-app Messaging**: Direct communication between caregivers and elders
-- **Emergency Alerts**: Quick emergency notification system
 - **Profile Management**: Comprehensive user profile management for both roles
 - **Notification System**: Real-time notifications for important events
 
@@ -387,10 +384,7 @@ For support and questions, please contact the development team.
 - ✅ Real-time health data monitoring from Firebase
 - ✅ Location tracking for elders
 - ✅ Health status system (Normal/Warning/Danger/Not Wearing)
-- ✅ Interactive charts with 7 data points
 - ✅ Real-time updates without page refresh
-- ✅ Caregiver-Elder messaging system
-- ✅ Emergency alert system
 - ✅ Profile management for both roles
 
 ---

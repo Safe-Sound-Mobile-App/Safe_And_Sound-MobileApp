@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
     View,
     Text,
@@ -8,9 +8,13 @@ import {
     ScrollView,
     ActivityIndicator,
     Alert,
-    Modal,
-    TextInput,
+    Linking,
+    Platform,
+    AppState,
+    type AppStateStatus,
 } from 'react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -18,8 +22,19 @@ import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
 import { elderHomeStyles as styles } from "../../../global_style/elderUseSection/elderHomeStyles";
 import auth from '@react-native-firebase/auth';
-import { getElderCaregivers, getUserProfile, updateElderHealthStatus, sendEmergencyAlert } from '../../../services/firestore';
+import { clearElderLocation, getElderCaregivers, getUserProfile, sendEmergencyAlert } from '../../../services/firestore';
 import { requestLocationPermissions, startLocationTracking, checkLocationPermissions } from '../../../services/location';
+
+/** Opens system Location screen (GPS / location mode), not the app’s App info page. */
+async function openDeviceLocationSettings(): Promise<void> {
+    if (Platform.OS === 'android') {
+        await IntentLauncher.startActivityAsync(
+            IntentLauncher.ActivityAction.LOCATION_SOURCE_SETTINGS
+        );
+    } else {
+        Linking.openSettings();
+    }
+}
 
 const chatIcon = require('../../../../assets/icons/chat.png');
 const defaultAvatar = require('../../../../assets/icons/elder.png');
@@ -42,14 +57,44 @@ type Props = NativeStackScreenProps<RootStackParamList, "ElderHomepage">;
 export default function ElderHomepage({ navigation }: Props) {
     const [caregivers, setCaregivers] = useState<CaregiverData[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showHealthModal, setShowHealthModal] = useState(false);
-    const [updatingHealth, setUpdatingHealth] = useState(false);
     const [locationEnabled, setLocationEnabled] = useState<boolean | null>(null);
-    
-    // Health data states
-    const [heartRate, setHeartRate] = useState('70');
-    const [spO2, setSpO2] = useState('98');
-    const [gyroscope, setGyroscope] = useState<'Normal' | 'Fell'>('Normal');
+    const [locationServicesOn, setLocationServicesOn] = useState<boolean | null>(null);
+    const stopTrackingRef = useRef<(() => void) | null>(null);
+
+    const beginTracking = useCallback((uid: string) => {
+        stopTrackingRef.current?.();
+        stopTrackingRef.current = startLocationTracking(
+            uid,
+            30000,
+            (error) => {
+                console.error('[Location] Tracking error:', error);
+            }
+        );
+    }, []);
+
+    /** Re-read GPS + permission after returning from system Location settings (same tab stays focused). */
+    const syncLocationFromSystem = useCallback(async () => {
+        const user = auth().currentUser;
+        if (!user) return;
+        try {
+            const servicesOn = await Location.hasServicesEnabledAsync();
+            setLocationServicesOn(servicesOn);
+            const perm = await checkLocationPermissions();
+            setLocationEnabled(servicesOn && perm.granted);
+            if (servicesOn && perm.granted) {
+                beginTracking(user.uid);
+            } else {
+                stopTrackingRef.current?.();
+                stopTrackingRef.current = null;
+                const cleared = await clearElderLocation(user.uid);
+                if (!cleared.success) {
+                    console.warn('[Location] clearElderLocation:', cleared.error);
+                }
+            }
+        } catch {
+            /* ignore */
+        }
+    }, [beginTracking]);
 
     const fetchCaregivers = useCallback(async () => {
         try {
@@ -97,15 +142,12 @@ export default function ElderHomepage({ navigation }: Props) {
 
     // Initialize location tracking
     useEffect(() => {
-        let stopTracking: (() => void) | null = null;
         let mounted = true;
 
         const initializeLocation = async () => {
             try {
                 const currentUser = auth().currentUser;
                 if (!currentUser) {
-                    console.log('[Location] No authenticated user, waiting...');
-                    // Wait a bit and try again if user not ready
                     setTimeout(() => {
                         if (mounted) {
                             initializeLocation();
@@ -114,105 +156,121 @@ export default function ElderHomepage({ navigation }: Props) {
                     return;
                 }
 
-                console.log('[Location] ===== Starting location initialization =====');
-                console.log('[Location] Elder ID:', currentUser.uid);
+                const servicesOn = await Location.hasServicesEnabledAsync();
+                if (mounted) setLocationServicesOn(servicesOn);
 
-                // Check current permission status
-                console.log('[Location] Step 1: Checking current permission status...');
+                if (!servicesOn) {
+                    stopTrackingRef.current?.();
+                    stopTrackingRef.current = null;
+                    await clearElderLocation(currentUser.uid);
+                }
+
                 const permissionStatus = await checkLocationPermissions();
-                console.log('[Location] Permission status result:', JSON.stringify(permissionStatus, null, 2));
-                setLocationEnabled(permissionStatus.granted);
+                if (mounted) {
+                    setLocationEnabled(servicesOn && permissionStatus.granted);
+                }
 
-                if (permissionStatus.granted) {
-                    console.log('[Location] ✓ Permission already granted, starting tracking...');
-                    // Start tracking location (updates every 30 seconds)
-                    stopTracking = startLocationTracking(
-                        currentUser.uid,
-                        30000, // 30 seconds
-                        (error) => {
-                            if (mounted) {
-                                console.error('[Location] Tracking error:', error);
-                            }
-                        }
-                    );
-                    console.log('[Location] ✓ Location tracking started');
-                } else {
-                    console.log('[Location] ✗ Permission not granted');
-                    console.log('[Location] Step 2: Requesting permission...');
-                    
-                    // Request permission immediately
+                if (servicesOn && permissionStatus.granted) {
+                    beginTracking(currentUser.uid);
+                } else if (servicesOn) {
                     const requestResult = await requestLocationPermissions();
-                    console.log('[Location] Request result:', JSON.stringify(requestResult, null, 2));
-                    
                     if (mounted) {
-                        setLocationEnabled(requestResult.granted);
-                        if (requestResult.granted) {
-                            console.log('[Location] ✓ Permission granted! Starting tracking...');
-                            // Start tracking after permission granted
-                            stopTracking = startLocationTracking(
-                                currentUser.uid,
-                                30000,
-                                (error) => {
-                                    if (mounted) {
-                                        console.error('[Location] Tracking error:', error);
-                                    }
-                                }
+                        setLocationEnabled(servicesOn && requestResult.granted);
+                    }
+                    if (requestResult.granted) {
+                        beginTracking(currentUser.uid);
+                    } else {
+                        stopTrackingRef.current?.();
+                        stopTrackingRef.current = null;
+                        await clearElderLocation(currentUser.uid);
+                        if (mounted && requestResult.message) {
+                            Alert.alert(
+                                'Location Permission Required',
+                                requestResult.message + '\n\nPlease enable location permission in Settings to allow caregivers to track your location for safety.',
+                                [{ text: 'OK' }]
                             );
-                            console.log('[Location] ✓ Location tracking started');
-                        } else {
-                            console.log('[Location] ✗ Permission denied or not available');
-                            console.log('[Location] Can ask again:', requestResult.canAskAgain);
-                            if (requestResult.message) {
-                                console.log('[Location] Message:', requestResult.message);
-                                // Show alert to inform user
-                                Alert.alert(
-                                    'Location Permission Required',
-                                    requestResult.message + '\n\nPlease enable location permission in Settings to allow caregivers to track your location for safety.',
-                                    [
-                                        {
-                                            text: 'OK',
-                                            style: 'default',
-                                        },
-                                    ]
-                                );
-                            }
                         }
                     }
                 }
-                console.log('[Location] ===== Location initialization complete =====');
             } catch (error: any) {
-                console.error('[Location] ===== ERROR in location initialization =====');
-                console.error('[Location] Error:', error);
-                console.error('[Location] Error message:', error?.message);
-                console.error('[Location] Error stack:', error?.stack);
+                console.error('[Location] initialization error:', error);
                 if (mounted) {
                     setLocationEnabled(false);
                     Alert.alert(
                         'Location Error',
-                        'Failed to initialize location tracking: ' + (error?.message || 'Unknown error') + '\n\nPlease check console logs for details.',
+                        'Failed to initialize location tracking: ' + (error?.message || 'Unknown error'),
                         [{ text: 'OK' }]
                     );
                 }
             }
         };
 
-        // Start immediately
         initializeLocation();
 
         return () => {
             mounted = false;
-            if (stopTracking) {
-                console.log('[Location] Cleaning up: Stopping location tracking');
-                stopTracking();
-            }
+            stopTrackingRef.current?.();
+            stopTrackingRef.current = null;
         };
-    }, []);
+    }, [beginTracking]);
+
+    useEffect(() => {
+        const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
+            if (next === 'active') {
+                syncLocationFromSystem();
+            }
+        });
+        return () => sub.remove();
+    }, [syncLocationFromSystem]);
+
+    const handleEnableLocationPress = async () => {
+        const currentUser = auth().currentUser;
+        if (!currentUser) {
+            Alert.alert('Error', 'No authenticated user found');
+            return;
+        }
+
+        const servicesOn = await Location.hasServicesEnabledAsync();
+        setLocationServicesOn(servicesOn);
+        if (!servicesOn) {
+            Alert.alert(
+                'Location is off',
+                'Turn on device location, then come back to the app. You can open the system Location settings below.',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Open location settings', onPress: () => openDeviceLocationSettings() },
+                ]
+            );
+            return;
+        }
+
+        const result = await requestLocationPermissions();
+        setLocationEnabled(result.granted);
+        if (result.granted) {
+            beginTracking(currentUser.uid);
+            try {
+                await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Highest,
+                    mayShowUserSettingsDialog: false,
+                });
+            } catch {
+                /* ignored */
+            }
+            Alert.alert('Success', 'Location is being shared with your caregivers.');
+        } else if (result.message) {
+            Alert.alert('Location permission needed', result.message, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'App settings', onPress: () => Linking.openSettings() },
+            ]);
+        }
+    };
 
     // Fetch on mount and whenever screen comes into focus (e.g. after accepting a caregiver on Notification)
     useFocusEffect(
         useCallback(() => {
             fetchCaregivers();
-        }, [fetchCaregivers])
+            syncLocationFromSystem();
+        }, [fetchCaregivers, syncLocationFromSystem])
     );
 
     const handleChat = (caregiverId: string, caregiverName: string) => {
@@ -268,50 +326,6 @@ export default function ElderHomepage({ navigation }: Props) {
                 },
             ]
         );
-    };
-
-    const handleUpdateHealth = async () => {
-        const currentUser = auth().currentUser;
-        if (!currentUser) {
-            Alert.alert('Error', 'No authenticated user found');
-            return;
-        }
-
-        // Validate inputs
-        const hrValue = parseInt(heartRate);
-        const spo2Value = parseInt(spO2);
-
-        if (isNaN(hrValue) || hrValue < 30 || hrValue > 200) {
-            Alert.alert('Error', 'Heart rate must be between 30-200 bpm');
-            return;
-        }
-
-        if (isNaN(spo2Value) || spo2Value < 0 || spo2Value > 100) {
-            Alert.alert('Error', 'SpO2 must be between 0-100%');
-            return;
-        }
-
-        setUpdatingHealth(true);
-        try {
-            const result = await updateElderHealthStatus(
-                currentUser.uid,
-                hrValue,
-                spo2Value,
-                gyroscope
-            );
-
-            if (result.success) {
-                Alert.alert('Success', 'Health data updated successfully!');
-                setShowHealthModal(false);
-            } else {
-                Alert.alert('Error', result.error || 'Failed to update health data');
-            }
-        } catch (error) {
-            console.error('Update health error:', error);
-            Alert.alert('Error', 'An unexpected error occurred');
-        } finally {
-            setUpdatingHealth(false);
-        }
     };
 
     const getStatusColor = (status: string) => {
@@ -373,83 +387,94 @@ export default function ElderHomepage({ navigation }: Props) {
                     <Text style={styles.countText}>{caregivers.length}/5</Text>
                 </View>
 
-                {/* Update Health Data Button */}
-                <TouchableOpacity
+                {/* Location — share with caregivers (GPS + app permission) */}
+                <View
                     style={{
-                        backgroundColor: '#008080',
-                        paddingVertical: 12,
-                        paddingHorizontal: 20,
-                        borderRadius: 12,
                         marginHorizontal: 20,
                         marginBottom: 16,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
+                        padding: 16,
+                        borderRadius: 14,
+                        backgroundColor: '#fff',
+                        borderWidth: 1,
+                        borderColor: '#e5e7eb',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowOpacity: 0.06,
+                        shadowRadius: 4,
+                        elevation: 2,
                     }}
-                    onPress={() => setShowHealthModal(true)}
-                    activeOpacity={0.8}
                 >
-                    <Ionicons name="fitness-outline" size={20} color="#fff" />
-                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 }}>
-                        Update Health Data
-                    </Text>
-                </TouchableOpacity>
-
-                {/* Location Status Button (for testing) */}
-                {locationEnabled === false && (
-                    <TouchableOpacity
-                        style={{
-                            backgroundColor: '#f59e0b',
-                            paddingVertical: 12,
-                            paddingHorizontal: 20,
-                            borderRadius: 12,
-                            marginHorizontal: 20,
-                            marginBottom: 16,
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                        onPress={async () => {
-                            const currentUser = auth().currentUser;
-                            if (!currentUser) {
-                                Alert.alert('Error', 'No authenticated user found');
-                                return;
-                            }
-                            const result = await requestLocationPermissions();
-                            setLocationEnabled(result.granted);
-                            if (result.granted) {
-                                Alert.alert('Success', 'Location permission granted! Location tracking will start automatically.');
-                            } else {
-                                Alert.alert('Permission Denied', result.message || 'Location permission is required.');
-                            }
-                        }}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons name="location-outline" size={20} color="#fff" />
-                        <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 }}>
-                            Enable Location Tracking
-                        </Text>
-                    </TouchableOpacity>
-                )}
-                
-                {locationEnabled === true && (
-                    <View style={{
-                        backgroundColor: '#d1fae5',
-                        paddingVertical: 12,
-                        paddingHorizontal: 20,
-                        borderRadius: 12,
-                        marginHorizontal: 20,
-                        marginBottom: 16,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}>
-                        <Ionicons name="checkmark-circle" size={20} color="#059669" />
-                        <Text style={{ color: '#059669', fontSize: 15, fontWeight: '600', marginLeft: 8 }}>
-                            Location Tracking Active
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                        <Ionicons name="navigate-circle" size={22} color="#008080" />
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginLeft: 8 }}>
+                            Your location
                         </Text>
                     </View>
-                )}
+                    <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 12, lineHeight: 18 }}>
+                        Turn on device location and allow this app to use it so caregivers can see you on the map.
+                    </Text>
+
+                    {locationEnabled === null || locationServicesOn === null ? (
+                        <ActivityIndicator color="#008080" style={{ alignSelf: 'flex-start' }} />
+                    ) : locationServicesOn === false ? (
+                        <TouchableOpacity
+                            style={{
+                                backgroundColor: '#ea580c',
+                                paddingVertical: 12,
+                                paddingHorizontal: 16,
+                                borderRadius: 10,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                            onPress={() => openDeviceLocationSettings()}
+                            activeOpacity={0.85}
+                        >
+                            <Ionicons name="location" size={20} color="#fff" />
+                            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 }}>
+                                Turn on device location
+                            </Text>
+                        </TouchableOpacity>
+                    ) : locationEnabled === false ? (
+                        <TouchableOpacity
+                            style={{
+                                backgroundColor: '#008080',
+                                paddingVertical: 12,
+                                paddingHorizontal: 16,
+                                borderRadius: 10,
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                            onPress={handleEnableLocationPress}
+                            activeOpacity={0.85}
+                        >
+                            <Ionicons name="location-outline" size={20} color="#fff" />
+                            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', marginLeft: 8 }}>
+                                Allow location access
+                            </Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <View
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                backgroundColor: '#d1fae5',
+                                paddingVertical: 10,
+                                paddingHorizontal: 12,
+                                borderRadius: 10,
+                            }}
+                        >
+                            <Ionicons name="checkmark-circle" size={20} color="#059669" />
+                            <Text style={{ color: '#047857', fontSize: 14, fontWeight: '600', marginLeft: 8, flex: 1 }}>
+                                Sharing location with caregivers
+                            </Text>
+                            <TouchableOpacity onPress={handleEnableLocationPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                                <Text style={{ color: '#008080', fontSize: 13, fontWeight: '600' }}>Refresh</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </View>
 
                 {/* Loading State */}
                 {loading && (
@@ -492,167 +517,6 @@ export default function ElderHomepage({ navigation }: Props) {
                     <Text style={styles.emergencyText}>Emergency</Text>
                 </TouchableOpacity>
             </View>
-
-            {/* Update Health Data Modal */}
-            <Modal
-                visible={showHealthModal}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setShowHealthModal(false)}
-            >
-                <View style={{
-                    flex: 1,
-                    backgroundColor: 'rgba(0,0,0,0.5)',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    padding: 20,
-                }}>
-                    <View style={{
-                        backgroundColor: '#fff',
-                        borderRadius: 16,
-                        padding: 24,
-                        width: '100%',
-                        maxWidth: 400,
-                    }}>
-                        <Text style={{ fontSize: 20, fontWeight: '700', marginBottom: 20, textAlign: 'center' }}>
-                            Update Health Data
-                        </Text>
-
-                        {/* Heart Rate Input */}
-                        <View style={{ marginBottom: 16 }}>
-                            <Text style={{ fontSize: 14, color: '#374151', marginBottom: 6 }}>
-                                Heart Rate (bpm)
-                            </Text>
-                            <TextInput
-                                style={{
-                                    borderWidth: 1,
-                                    borderColor: '#d1d5db',
-                                    borderRadius: 10,
-                                    padding: 12,
-                                    fontSize: 16,
-                                }}
-                                placeholder="70"
-                                keyboardType="numeric"
-                                value={heartRate}
-                                onChangeText={setHeartRate}
-                                editable={!updatingHealth}
-                            />
-                        </View>
-
-                        {/* SpO2 Input */}
-                        <View style={{ marginBottom: 16 }}>
-                            <Text style={{ fontSize: 14, color: '#374151', marginBottom: 6 }}>
-                                SpO2 (%)
-                            </Text>
-                            <TextInput
-                                style={{
-                                    borderWidth: 1,
-                                    borderColor: '#d1d5db',
-                                    borderRadius: 10,
-                                    padding: 12,
-                                    fontSize: 16,
-                                }}
-                                placeholder="98"
-                                keyboardType="numeric"
-                                value={spO2}
-                                onChangeText={setSpO2}
-                                editable={!updatingHealth}
-                            />
-                        </View>
-
-                        {/* Gyroscope Status */}
-                        <View style={{ marginBottom: 20 }}>
-                            <Text style={{ fontSize: 14, color: '#374151', marginBottom: 8 }}>
-                                Movement Status
-                            </Text>
-                            <View style={{ flexDirection: 'row', gap: 12 }}>
-                                <TouchableOpacity
-                                    style={{
-                                        flex: 1,
-                                        padding: 12,
-                                        borderRadius: 10,
-                                        borderWidth: 2,
-                                        borderColor: gyroscope === 'Normal' ? '#008080' : '#d1d5db',
-                                        backgroundColor: gyroscope === 'Normal' ? '#f0fdfa' : '#fff',
-                                        alignItems: 'center',
-                                    }}
-                                    onPress={() => setGyroscope('Normal')}
-                                    disabled={updatingHealth}
-                                >
-                                    <Text style={{
-                                        color: gyroscope === 'Normal' ? '#008080' : '#6b7280',
-                                        fontWeight: gyroscope === 'Normal' ? '600' : '400',
-                                    }}>
-                                        Normal
-                                    </Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={{
-                                        flex: 1,
-                                        padding: 12,
-                                        borderRadius: 10,
-                                        borderWidth: 2,
-                                        borderColor: gyroscope === 'Fell' ? '#ef4444' : '#d1d5db',
-                                        backgroundColor: gyroscope === 'Fell' ? '#fef2f2' : '#fff',
-                                        alignItems: 'center',
-                                    }}
-                                    onPress={() => setGyroscope('Fell')}
-                                    disabled={updatingHealth}
-                                >
-                                    <Text style={{
-                                        color: gyroscope === 'Fell' ? '#ef4444' : '#6b7280',
-                                        fontWeight: gyroscope === 'Fell' ? '600' : '400',
-                                    }}>
-                                        Fell
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {/* Buttons */}
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <TouchableOpacity
-                                style={{
-                                    flex: 1,
-                                    padding: 14,
-                                    borderRadius: 10,
-                                    borderWidth: 1,
-                                    borderColor: '#d1d5db',
-                                    alignItems: 'center',
-                                }}
-                                onPress={() => setShowHealthModal(false)}
-                                disabled={updatingHealth}
-                            >
-                                <Text style={{ color: '#6b7280', fontSize: 15, fontWeight: '600' }}>
-                                    Cancel
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={{
-                                    flex: 1,
-                                    padding: 14,
-                                    borderRadius: 10,
-                                    backgroundColor: '#008080',
-                                    alignItems: 'center',
-                                    opacity: updatingHealth ? 0.6 : 1,
-                                }}
-                                onPress={handleUpdateHealth}
-                                disabled={updatingHealth}
-                            >
-                                {updatingHealth ? (
-                                    <ActivityIndicator color="#fff" />
-                                ) : (
-                                    <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
-                                        Update
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
         </SafeAreaView>
     );
 }

@@ -1,6 +1,6 @@
 import * as Location from 'expo-location';
 import { Platform, Alert } from 'react-native';
-import { updateElderLocation } from './firestore';
+import { clearElderLocation, updateElderLocation } from './firestore';
 
 export interface LocationPermissionStatus {
   granted: boolean;
@@ -105,6 +105,14 @@ export const getCurrentLocation = async (): Promise<{
   error?: string;
 }> => {
   try {
+    const servicesEnabled = await Location.hasServicesEnabledAsync();
+    if (!servicesEnabled) {
+      return {
+        success: false,
+        error: 'Location services are disabled',
+      };
+    }
+
     const permissionStatus = await checkLocationPermissions();
     if (!permissionStatus.granted) {
       const requestResult = await requestLocationPermissions();
@@ -119,6 +127,8 @@ export const getCurrentLocation = async (): Promise<{
     const location = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
       timeInterval: 5000,
+      /** Prevents repeated Google Play “improve location accuracy” system popups on Android */
+      mayShowUserSettingsDialog: false,
     });
 
     return {
@@ -188,6 +198,7 @@ export const startLocationTracking = (
 ): (() => void) => {
   let watchSubscription: Location.LocationSubscription | null = null;
   let updateInterval: NodeJS.Timeout | null = null;
+  let permissionWatchInterval: ReturnType<typeof setInterval> | null = null;
   let isActive = true;
 
   const stopTracking = () => {
@@ -200,19 +211,54 @@ export const startLocationTracking = (
       clearInterval(updateInterval);
       updateInterval = null;
     }
+    if (permissionWatchInterval) {
+      clearInterval(permissionWatchInterval);
+      permissionWatchInterval = null;
+    }
   };
 
   (async () => {
     try {
-      // Request permissions first
-      const permissionStatus = await requestLocationPermissions();
+      const servicesOn = await Location.hasServicesEnabledAsync();
+      if (!servicesOn) {
+        await clearElderLocation(elderId);
+        onError?.('Location services disabled');
+        return;
+      }
+
+      const { status: fgStatus } = await Location.getForegroundPermissionsAsync();
+      const permissionStatus =
+        fgStatus === 'granted'
+          ? { granted: true as const, canAskAgain: false }
+          : await requestLocationPermissions();
       if (!permissionStatus.granted) {
-        onError?.(permissionStatus.message || 'Location permission not granted');
-        return stopTracking;
+        await clearElderLocation(elderId);
+        onError?.(
+          'message' in permissionStatus && permissionStatus.message
+            ? permissionStatus.message
+            : 'Location permission not granted'
+        );
+        return;
       }
 
       // Update location immediately
       await updateLocationToFirebase(elderId);
+
+      // Detect GPS / permission toggled off while app stays foreground (no AppState event on some devices)
+      permissionWatchInterval = setInterval(async () => {
+        if (!isActive) return;
+        try {
+          const servicesOn = await Location.hasServicesEnabledAsync();
+          const { status } = await Location.getForegroundPermissionsAsync();
+          if (!servicesOn || status !== 'granted') {
+            await clearElderLocation(elderId);
+            stopTracking();
+            onError?.('Location sharing stopped (GPS or permission off)');
+          }
+        } catch {
+          /* ignore */
+        }
+      }, 15000);
 
       // Set up periodic updates
       updateInterval = setInterval(async () => {
@@ -229,6 +275,7 @@ export const startLocationTracking = (
           accuracy: Location.Accuracy.Balanced,
           timeInterval: updateIntervalMs,
           distanceInterval: 10, // Update if moved 10 meters
+          mayShowUserSettingsDialog: false,
         },
         async (location) => {
           if (!isActive) return;

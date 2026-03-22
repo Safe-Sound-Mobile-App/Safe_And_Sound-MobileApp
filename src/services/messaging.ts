@@ -164,6 +164,37 @@ export async function clearFcmToken(): Promise<void> {
 }
 
 /**
+ * Lightweight: ensure channel exists and refresh FCM token when app comes to foreground.
+ * Use this to keep token in sync (e.g. after token rotation) so Cloud doesn't send to stale token.
+ */
+export async function refreshFcmTokenOnForeground(): Promise<void> {
+  const user = auth().currentUser;
+  if (!user) return;
+
+  const messagingInstance = await getMessaging();
+  if (!messagingInstance) return;
+
+  try {
+    if (Platform.OS === 'android') {
+      await ensureAndroidNotificationChannel();
+    }
+    const token = await messagingInstance().getToken();
+    if (!token) return;
+    const doc = await firestore().collection('users').doc(user.uid).get();
+    const currentToken = doc.data()?.fcmToken;
+    if (currentToken !== token) {
+      await firestore().collection('users').doc(user.uid).update({
+        fcmToken: token,
+        fcmTokenUpdatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+      console.log('📱 FCM token refreshed on foreground and saved to Firestore');
+    }
+  } catch (e) {
+    console.warn('📱 Refresh FCM token on foreground failed:', e);
+  }
+}
+
+/**
  * Check notification permission status
  */
 export async function checkNotificationPermission(): Promise<boolean> {
@@ -203,6 +234,16 @@ export async function setupFCMHandlers(): Promise<() => void> {
 
   console.log('✅ FCM messaging instance obtained');
 
+  // Ensure expo will show notifications while the app is in foreground.
+  // This is required because by default some platforms may suppress alerts in foreground.
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
+
   // Handle foreground messages (when app is open)
   const unsubscribeForeground = messagingInstance().onMessage(async (remoteMessage) => {
     console.log('📨 FCM foreground message received:', JSON.stringify(remoteMessage, null, 2));
@@ -221,6 +262,11 @@ export async function setupFCMHandlers(): Promise<() => void> {
             body: remoteMessage.notification.body || '',
             data: remoteMessage.data || {},
             sound: true,
+            // Ensure it uses the same Android notification channel as FCM.
+            android: {
+              channelId: 'fcm_fallback_notification_channel',
+              priority: 'high',
+            },
           },
           trigger: null, // Show immediately
         });

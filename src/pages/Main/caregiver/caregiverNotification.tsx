@@ -104,7 +104,8 @@ export default function CaregiverNotification({ navigation }: Props) {
     return () => unsubNotifs();
   }, [activeTab]);
 
-  const activityNotifs = notifications.filter((n) => n.type !== 'elder_accept');
+  // Show ALL notification types in Activities so unread items (e.g. `elder_accept`) can be marked as read.
+  const activityNotifs = notifications;
 
   // Get notification badge color
   const getNotificationColor = (type: string) => {

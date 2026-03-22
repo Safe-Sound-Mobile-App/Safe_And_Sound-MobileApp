@@ -350,6 +350,15 @@ export const updateElderHealthStatus = async (
   }
 ): Promise<ServiceResult> => {
   try {
+    // Determine previous status so we can notify only on actual changes
+    const prevElderSnap = await firestore().collection('elders').doc(elderId).get();
+    const prevRiskRaw = prevElderSnap.exists
+      ? (prevElderSnap.data()?.currentHealthStatus?.risk ?? null)
+      : null;
+    const prevRisk = normalizeStatus(prevRiskRaw);
+
+    const nextRisk = normalizeStatus(healthData.risk);
+
     await firestore()
       .collection('elders')
       .doc(elderId)
@@ -363,6 +372,59 @@ export const updateElderHealthStatus = async (
 
     // Also create a health record for history
     await createHealthRecord(elderId, healthData);
+
+    // Create health change notification for caregivers (Warning/Danger only)
+    // This feeds the existing push-notification pipeline (notifications collection + push scheduler).
+    if ((nextRisk === 'Warning' || nextRisk === 'Danger') && prevRisk !== nextRisk) {
+      const elderProfile = await getUserProfile(elderId);
+      const elderName =
+        elderProfile.success && elderProfile.data
+          ? `${elderProfile.data.firstName} ${elderProfile.data.lastName}`.trim()
+          : 'An elder';
+
+      // Get all active caregivers for this elder
+      const relationshipsSnapshot = await firestore()
+        .collection('relationships')
+        .where('elderId', '==', elderId)
+        .where('status', '==', 'active')
+        .get();
+
+      const notifType = nextRisk === 'Warning' ? 'warning' : 'danger';
+      const title = 'Health Alert';
+      const message = `${elderName} is ${nextRisk}.`;
+
+      // Firestore writes + pushes are handled by the backend scheduler
+      // (We only create notification documents here.)
+      const notifPromises = relationshipsSnapshot.docs.map(async (relDoc) => {
+        const caregiverId = relDoc.data().caregiverId;
+        if (!caregiverId) return;
+
+        // Respect caregiver notification preference (healthChanges)
+        const prefSnap = await firestore()
+          .collection('notificationPreferences')
+          .doc(caregiverId)
+          .get();
+
+        const healthChangesEnabled = prefSnap.exists
+          ? !!(prefSnap.data() as NotificationPreferences).healthChanges
+          : true;
+
+        if (!healthChangesEnabled) return;
+
+        await firestore().collection('notifications').add({
+          userId: caregiverId,
+          type: notifType,
+          title,
+          message,
+          relatedId: elderId,
+          read: false,
+          timestamp: firestore.FieldValue.serverTimestamp(),
+          pushSent: false,
+        });
+      });
+
+      await Promise.all(notifPromises);
+    }
 
     return { success: true };
   } catch (error: any) {
@@ -401,6 +463,25 @@ export const updateElderLocation = async (
     return {
       success: false,
       error: error.message || 'Failed to update location',
+    };
+  }
+};
+
+/** Call when elder turns off GPS or revokes location permission so caregivers do not see stale coordinates. */
+export const clearElderLocation = async (elderId: string): Promise<ServiceResult> => {
+  try {
+    await firestore()
+      .collection('elders')
+      .doc(elderId)
+      .update({
+        currentLocation: null,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to clear location',
     };
   }
 };
@@ -987,9 +1068,12 @@ export const searchElderByUid = async (
   uid: string
 ): Promise<ServiceResult<{ user: User; elder: Elder }>> => {
   try {
+    console.log('[searchElderByUid] Searching for elder with UID:', uid);
+    
     // First, get user info
     const userResult = await getUserProfile(uid);
     if (!userResult.success || !userResult.data) {
+      console.log('[searchElderByUid] User profile not found for UID:', uid);
       return {
         success: false,
         error: 'Elder not found',
@@ -998,6 +1082,7 @@ export const searchElderByUid = async (
 
     // Check if user is an elder
     if (userResult.data.role !== 'elder') {
+      console.log('[searchElderByUid] User is not an elder. Role:', userResult.data.role);
       return {
         success: false,
         error: 'User is not an elder',
@@ -1005,6 +1090,7 @@ export const searchElderByUid = async (
     }
 
     // Get elder profile
+    console.log('[searchElderByUid] Fetching elder document...');
     const elderDoc = await firestore().collection('elders').doc(uid).get();
     
     // If elder profile doesn't exist, create a default one
@@ -1041,6 +1127,7 @@ export const searchElderByUid = async (
       elderData = elderDoc.data() as Elder;
     }
 
+    console.log('[searchElderByUid] Successfully found elder:', uid);
     return {
       success: true,
       data: {
@@ -1049,6 +1136,12 @@ export const searchElderByUid = async (
       },
     };
   } catch (error: any) {
+    console.error('[searchElderByUid] Error searching elder:', error);
+    console.error('[searchElderByUid] Error details:', {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+    });
     return {
       success: false,
       error: error.message || 'Failed to search elder',
@@ -1389,6 +1482,8 @@ export const listenToEmergencyAlerts = (
   onError: (error: string) => void
 ) => {
   // First, get all elder IDs for this caregiver
+  let unsubscribeAlerts: (() => void) | null = null;
+
   const unsubscribeRelationships = firestore()
     .collection('relationships')
     .where('caregiverId', '==', caregiverId)
@@ -1396,28 +1491,42 @@ export const listenToEmergencyAlerts = (
     .onSnapshot(
       (relationshipsSnapshot) => {
         const elderIds = relationshipsSnapshot.docs.map((doc) => doc.data().elderId);
+        console.log('[listenToEmergencyAlerts] caregiverId=', caregiverId, 'elderIds=', elderIds);
 
         if (elderIds.length === 0) {
+          // ถ้าไม่มี elder ดูแล ให้ยกเลิก listener เดิม (ถ้ามี) และเคลียร์ state
+          if (unsubscribeAlerts) {
+            unsubscribeAlerts();
+            unsubscribeAlerts = null;
+          }
           onAlertsUpdate([]);
           return;
         }
 
-        // Listen to active alerts for these elders
-        const unsubscribeAlerts = firestore()
+        // Listen to ALL active alerts, then filter client-side by elderIds
+        // (avoids composite index + 'in' query limitations)
+        if (unsubscribeAlerts) {
+          unsubscribeAlerts();
+          unsubscribeAlerts = null;
+        }
+
+        unsubscribeAlerts = firestore()
           .collection('emergencyAlerts')
-          .where('elderId', 'in', elderIds)
           .where('status', '==', 'active')
-          .orderBy('timestamp', 'desc')
           .onSnapshot(
             (alertsSnapshot) => {
-              const alerts = alertsSnapshot.docs.map((doc) => ({
-                id: doc.id,
-                elderId: doc.data().elderId,
-                elderName: doc.data().elderName,
-                timestamp: doc.data().timestamp?.toDate() || new Date(),
-                location: doc.data().location || undefined,
-                status: doc.data().status,
-              }));
+              const alerts = alertsSnapshot.docs
+                .map((doc) => ({
+                  id: doc.id,
+                  elderId: doc.data().elderId,
+                  elderName: doc.data().elderName,
+                  timestamp: doc.data().timestamp?.toDate() || new Date(0),
+                  location: doc.data().location || undefined,
+                  status: doc.data().status,
+                }))
+                .filter((alert) => elderIds.includes(alert.elderId))
+                .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+              console.log('[listenToEmergencyAlerts] active alerts after filter=', alerts.length);
               onAlertsUpdate(alerts);
             },
             (error) => {
@@ -1496,23 +1605,25 @@ export const listenToNotifications = (
   onNotificationsUpdate: (notifications: Notification[]) => void,
   onError: (error: string) => void
 ) => {
+  // Use simple where + client-side sort to avoid index issues
   const unsubscribe = firestore()
     .collection('notifications')
     .where('userId', '==', userId)
-    .orderBy('timestamp', 'desc')
     .limit(50)
     .onSnapshot(
       (snapshot) => {
-        const notifications = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          userId: doc.data().userId,
-          type: doc.data().type,
-          title: doc.data().title,
-          message: doc.data().message,
-          relatedId: doc.data().relatedId || undefined,
-          timestamp: doc.data().timestamp?.toDate() || new Date(),
-          read: doc.data().read || false,
-        }));
+        const notifications = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            userId: doc.data().userId,
+            type: doc.data().type,
+            title: doc.data().title,
+            message: doc.data().message,
+            relatedId: doc.data().relatedId || undefined,
+            timestamp: doc.data().timestamp?.toDate() || new Date(0),
+            read: doc.data().read || false,
+          }))
+          .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
         onNotificationsUpdate(notifications);
       },
       (error) => {

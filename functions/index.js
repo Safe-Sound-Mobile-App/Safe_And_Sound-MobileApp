@@ -28,17 +28,49 @@ async function sendPushNotification(userId, title, body, type, notifId) {
     }
     
     const userData = userDoc.data();
-    const fcmToken = userData?.fcmToken;
-    
-    if (!fcmToken) {
-      console.log(`❌ No FCM token found for user ${userId}`);
+
+    // Support multi-device tokens:
+    // - Preferred: users/{uid}.fcmTokens.{installationId}.token
+    // - Fallback: users/{uid}.fcmToken (legacy single token)
+    const tokenMap =
+      userData?.fcmTokens && typeof userData.fcmTokens === "object" ? userData.fcmTokens : null;
+
+    /** tokenEntries: { token: string, key: string|null } */
+    const tokenEntries = [];
+
+    if (tokenMap) {
+      for (const [key, val] of Object.entries(tokenMap)) {
+        const tok = val && typeof val === "object" ? val.token : null;
+        if (typeof tok === "string" && tok.length > 0) {
+          tokenEntries.push({ token: tok, key });
+        }
+      }
+    }
+
+    const legacyToken = typeof userData?.fcmToken === "string" ? userData.fcmToken : null;
+    if (legacyToken && legacyToken.length > 0) {
+      tokenEntries.push({ token: legacyToken, key: null });
+    }
+
+    // Deduplicate by token string
+    const seen = new Set();
+    const uniqueEntries = [];
+    for (const e of tokenEntries) {
+      if (seen.has(e.token)) continue;
+      seen.add(e.token);
+      uniqueEntries.push(e);
+    }
+
+    if (!uniqueEntries.length) {
+      console.log(`❌ No FCM tokens found for user ${userId}`);
       return false;
     }
-    
-    console.log(`📤 Sending FCM push to user ${userId}, token: ${fcmToken.substring(0, 20)}...`);
-    
+
+    const tokens = uniqueEntries.map((e) => e.token);
+    console.log(`📤 Sending FCM push to user ${userId}, tokens: ${tokens.length}`);
+
     const message = {
-      token: fcmToken,
+      tokens,
       notification: { title, body },
       data: {
         type: String(type || ""),
@@ -49,29 +81,56 @@ async function sendPushNotification(userId, title, body, type, notifId) {
         notification: {
           channelId: "fcm_fallback_notification_channel",
           priority: "high",
+          tag: String(notifId || ""),
+          defaultSound: true,
+          defaultVibrateTimings: true,
+          visibility: "public",
         },
       },
     };
-    
-    const response = await admin.messaging().send(message);
-    console.log(`✅ Successfully sent FCM push for notification ${notifId} (type: ${type}) to user ${userId}, messageId: ${response}`);
-    return true;
+
+    const response = await admin.messaging().sendEachForMulticast(message);
+    const successCount = response.successCount || 0;
+    const failureCount = response.failureCount || 0;
+
+    console.log(
+      `✅ FCM multicast for notification ${notifId} (type: ${type}) to user ${userId}: success=${successCount}, failure=${failureCount}`
+    );
+
+    // Best-effort cleanup for invalid tokens
+    try {
+      if (tokenMap && failureCount > 0) {
+        const invalidTokenKeys = new Set();
+        response.responses.forEach((r, idx) => {
+          if (r.success) return;
+          const code = r.error?.code;
+          const key = uniqueEntries[idx]?.key;
+          if (!key) return;
+          if (
+            code === "messaging/invalid-registration-token" ||
+            code === "messaging/registration-token-not-registered"
+          ) {
+            invalidTokenKeys.add(key);
+          }
+        });
+
+        if (invalidTokenKeys.size > 0) {
+          const updates = {};
+          for (const key of invalidTokenKeys) {
+            updates[`fcmTokens.${key}`] = admin.firestore.FieldValue.delete();
+          }
+          await admin.firestore().collection("users").doc(userId).update(updates);
+          console.log(`🗑️ Deleted ${invalidTokenKeys.size} invalid fcmTokens for user ${userId}`);
+        }
+      }
+    } catch (cleanupErr) {
+      console.error("FCM token cleanup failed:", cleanupErr);
+    }
+
+    return successCount > 0;
   } catch (e) {
     // Handle specific FCM errors
-    if (e.code === 'messaging/invalid-registration-token' || e.code === 'messaging/registration-token-not-registered') {
-      console.error(`❌ Invalid/expired FCM token for user ${userId}, notification ${notifId}:`, e.message);
-      // Optionally: clear the invalid token from Firestore
-      try {
-        await admin.firestore().collection("users").doc(userId).update({
-          fcmToken: admin.firestore.FieldValue.delete(),
-        });
-        console.log(`🗑️ Deleted invalid FCM token for user ${userId}`);
-      } catch (deleteError) {
-        console.error(`Failed to delete invalid token:`, deleteError);
-      }
-    } else {
-      console.error(`❌ FCM send error for notification ${notifId}, user ${userId}:`, e.code, e.message);
-    }
+    console.error(`❌ FCM send error for notification ${notifId}, user ${userId}:`, e.code, e.message);
     return false;
   }
 }
@@ -82,6 +141,9 @@ async function sendPushNotification(userId, title, body, type, notifId) {
  */
 exports.sendPushOnNotificationCreate = onSchedule(
   {
+    // Scheduled retry mechanism (fallback).
+    // Use the shortest interval supported by your project.
+    // NOTE: Cloud Scheduler for Firebase Functions v2 typically runs at minute granularity.
     schedule: "every 1 minutes",
     region: "asia-southeast2",
     timeZone: "Asia/Bangkok",
@@ -90,20 +152,16 @@ exports.sendPushOnNotificationCreate = onSchedule(
     const db = admin.firestore();
     console.log("Scheduled function running: checking for unsent notifications...");
     
-    // Query notifications ที่ยังไม่ส่ง push
-    // รวมทั้ง documents ที่ไม่มี field pushSent (ของเก่า) และ pushSent: false
+    // Only pull docs that are explicitly waiting for push.
+    // (We avoid limit-only query to not miss newly created notifications.)
     const snapshot = await db
       .collection("notifications")
-      .limit(100)
+      .where("pushSent", "==", false)
+      .limit(200)
       .get();
-    
-    // Filter documents ที่ pushSent ไม่ใช่ true (รวม false และ undefined)
-    const unsentDocs = snapshot.docs.filter((doc) => {
-      const data = doc.data();
-      return data.pushSent !== true; // รวม false และ undefined
-    });
 
-    console.log(`Found ${unsentDocs.length} unsent notifications (out of ${snapshot.size} total)`);
+    const unsentDocs = snapshot.docs;
+    console.log(`Found ${unsentDocs.length} notifications with pushSent=false`);
 
     const batch = db.batch();
     let sentCount = 0;
@@ -146,6 +204,129 @@ exports.sendPushOnNotificationCreate = onSchedule(
 );
 
 /**
+ * Health status notifier (scheduled):
+ * ตรวจ every 1 นาทีว่า health status เป็น Warning/Danger หรือไม่
+ * ถ้าใช่ จะสร้าง notification (pushSent:false) ให้ caregiver ตาม relationship ที่ active
+ *
+ * ออกแบบให้ "ไม่ต้อง detect การเปลี่ยน" (จะส่งซ้ำทุกนาทีเท่าที่สถานะยังเป็น Warning/Danger)
+ */
+exports.sendHealthStatusNotifications = onSchedule(
+  {
+    schedule: "every 1 minutes",
+    region: "asia-southeast2",
+    timeZone: "Asia/Bangkok",
+  },
+  async () => {
+    const db = admin.firestore();
+    const minuteBucket = Math.floor(Date.now() / 60000);
+
+    const normalizeStatus = (statusRaw) => {
+      if (!statusRaw || typeof statusRaw !== "string") return "Not Wearing";
+      const normalized = statusRaw.replace(/_/g, " ").trim().toLowerCase();
+      if (normalized === "warning") return "Warning";
+      if (normalized === "danger") return "Danger";
+      if (normalized === "normal") return "Normal";
+      if (
+        normalized === "not wearing" ||
+        normalized === "not_wearing" ||
+        normalized === "notwearing"
+      )
+        return "Not Wearing";
+      return "Not Wearing";
+    };
+
+    try {
+      // Load all active caregiver<->elder relationships
+      const relationshipsSnapshot = await db
+        .collection("relationships")
+        .where("status", "==", "active")
+        .get();
+
+      const eldersStatusCache = new Map(); // elderId -> normalized status
+      const eldersNameCache = new Map(); // elderId -> elderName
+
+      let createdCount = 0;
+
+      for (const relDoc of relationshipsSnapshot.docs) {
+        const rel = relDoc.data() || {};
+        const caregiverId = rel.caregiverId;
+        const elderId = rel.elderId;
+        if (!caregiverId || !elderId) continue;
+
+        // Respect notification preferences
+        const prefSnap = await db.collection("notificationPreferences").doc(caregiverId).get();
+        const healthChangesEnabled = prefSnap.exists
+          ? !!prefSnap.data().healthChanges
+          : true;
+        if (!healthChangesEnabled) continue;
+
+        // Fetch/cached elder name
+        let elderName = eldersNameCache.get(elderId);
+        if (!elderName) {
+          const elderUserSnap = await db.collection("users").doc(elderId).get();
+          const u = elderUserSnap.exists ? elderUserSnap.data() : null;
+          elderName = u
+            ? `${u.firstName || ""} ${u.lastName || ""}`.trim() || "An elder"
+            : "An elder";
+          eldersNameCache.set(elderId, elderName);
+        }
+
+        // Fetch/cached elder health status
+        let normalizedStatus = eldersStatusCache.get(elderId);
+        if (!normalizedStatus) {
+          const healthSnap = await db.collection("healthData").doc(elderId).get();
+          const d = healthSnap.exists ? healthSnap.data() : null;
+
+          const statusRaw =
+            d?.sensorPayload?.health?.status ??
+            d?.aiPrediction?.status ??
+            d?.status ??
+            null;
+
+          normalizedStatus = normalizeStatus(statusRaw);
+          eldersStatusCache.set(elderId, normalizedStatus);
+        }
+
+        if (normalizedStatus !== "Warning" && normalizedStatus !== "Danger") {
+          continue;
+        }
+
+        const notifType = normalizedStatus === "Warning" ? "warning" : "danger";
+        const title = "Health Alert";
+        const message = `${elderName} is ${normalizedStatus}.`;
+
+        // Deterministic docId to avoid duplicates in the same minute bucket
+        const notifDocId = `healthStatus_${caregiverId}_${elderId}_${notifType}_${minuteBucket}`;
+        const notifRef = db.collection("notifications").doc(notifDocId);
+
+        // Create only if not exists
+        try {
+          await notifRef.create({
+            userId: caregiverId,
+            type: notifType,
+            title,
+            message,
+            relatedId: elderId,
+            read: false,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            pushSent: false,
+          });
+          createdCount++;
+        } catch (err) {
+          // ignore already exists / other create errors (scheduled may overlap)
+        }
+      }
+
+      console.log(`Health status notifications created: ${createdCount}`);
+    } catch (e) {
+      console.error("sendHealthStatusNotifications failed:", e);
+    }
+
+    return null;
+  }
+);
+
+/**
  * Helper Function: Reset pushSent to false for testing
  * Call this manually from Firebase Console or via HTTP trigger if needed
  */
@@ -153,6 +334,7 @@ exports.resetPushSent = require("firebase-functions/v2/https").onRequest(
   {
     region: "asia-southeast2",
     cors: true,
+    invoker: "private",
   },
   async (req, res) => {
     // Security: Only allow POST requests

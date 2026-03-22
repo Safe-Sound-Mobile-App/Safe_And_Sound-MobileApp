@@ -1,6 +1,6 @@
 # Safe & Sound Mobile App
 
-A comprehensive mobile application for monitoring and managing elderly care, connecting caregivers with elders through real-time health monitoring, location tracking, and communication features.
+A comprehensive mobile application for monitoring and managing elderly care, connecting caregivers with elders through real-time health monitoring, location tracking, and notification features.
 
 ## 📱 Overview
 
@@ -11,9 +11,6 @@ Safe & Sound is a React Native mobile application built with Expo that enables c
 - **Real-time Health Monitoring**: Track vital signs (Heart Rate, SpO2) and movement status (Gyroscope) with live updates
 - **Location Tracking**: Monitor elder location with GPS tracking and map visualization
 - **Health Status Alerts**: Visual indicators for Normal, Warning, Danger, and Not Wearing statuses
-- **Interactive Charts**: Display 7 latest data points for Heart Rate and SpO2 trends
-- **In-app Messaging**: Direct communication between caregivers and elders
-- **Emergency Alerts**: Quick emergency notification system
 - **Profile Management**: Comprehensive user profile management for both roles
 - **Notification System**: Real-time notifications for important events
 
@@ -158,21 +155,16 @@ Safe_And_Sound-MobileApp/
   - Health status indicators (Normal/Warning/Danger/Not Wearing)
 - **Elder Detail Page**: 
   - Detailed health information
-  - Interactive charts (7 latest data points)
   - Location tracking with map preview
   - Copy coordinates functionality
-- **Emergency Alerts**: Receive and manage emergency notifications
-- **Chat**: Direct messaging with elders
 - **Notifications**: View and manage all notifications
 - **Profile Management**: Edit caregiver profile
 
 ### Elder Features
 
 - **Caregiver List**: View all assigned caregivers
-- **Health Data Input**: Manual health data entry (Heart Rate, SpO2, Gyroscope)
 - **Location Tracking**: Automatic location tracking (requires permission)
 - **Emergency Button**: Send emergency alerts to all caregivers
-- **Chat**: Direct messaging with caregivers
 - **Notifications**: View relationship requests and notifications
 - **Profile Management**: Edit elder profile
 
@@ -182,7 +174,6 @@ The app uses Firestore real-time listeners to automatically update:
 
 - **Health Data**: Status, Heart Rate, SpO2, Gyroscope status
 - **Location**: Current GPS coordinates
-- **Charts**: Latest 7 data points for Heart Rate and SpO2 trends
 - **Notifications**: New alerts and messages
 
 Updates occur automatically without requiring page refresh or navigation.
@@ -345,6 +336,12 @@ Users can register and sign in as either:
    - Verify user authentication status
    - Check console for Firestore errors
 
+5. **Push Notifications Not Showing (Cloud Log Shows Success)**
+   - **Permission**: On Android 13+, ensure "Notifications" is allowed in app Settings. Open app → Settings → Notifications (or system Settings → Apps → Safe & Sound → Notifications) and enable.
+   - **Battery / Doze**: Some manufacturers (Xiaomi, Huawei, Oppo, Samsung, etc.) restrict background apps. Disable "Battery optimization" or "Battery saver" for Safe & Sound so the system can deliver FCM.
+   - **Token**: The app refreshes the FCM token when it comes to foreground. If you reinstalled the app or cleared data, open the app once and stay on a screen for a few seconds so the token is saved; then test push again.
+   - **Multiple notifications**: Each notification is sent with a unique tag so they don’t collapse. If some still don’t appear, check device notification settings for the app (sound, pop-up, lock screen).
+
 ## 📝 Scripts
 
 - `npm start`: Start Expo development server
@@ -381,10 +378,7 @@ For support and questions, please contact the development team.
 - ✅ Real-time health data monitoring from Firebase
 - ✅ Location tracking for elders
 - ✅ Health status system (Normal/Warning/Danger/Not Wearing)
-- ✅ Interactive charts with 7 data points
 - ✅ Real-time updates without page refresh
-- ✅ Caregiver-Elder messaging system
-- ✅ Emergency alert system
 - ✅ Profile management for both roles
 
 ---

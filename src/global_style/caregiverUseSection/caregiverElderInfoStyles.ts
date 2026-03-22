@@ -1,6 +1,4 @@
-import { StyleSheet, Dimensions } from 'react-native';
-
-const { width } = Dimensions.get('window');
+import { StyleSheet } from 'react-native';
 
 // Base font sizes
 const baseFontSizes = {
@@ -92,13 +90,13 @@ export const caregiverElderInfoStyles = StyleSheet.create({
     elevation: 3,
   },
   vitalItem: {
-    marginBottom: 20,
+    marginBottom: 10,
   },
   vitalLabel: {
     fontSize: baseFontSizes.vitalLabel,
     fontFamily: 'BalooBhaijaan2_400Regular',
     color: '#374151',
-    marginBottom: 5,
+    marginBottom: 0,
   },
   vitalValueRow: {
     flexDirection: 'row',
@@ -113,12 +111,12 @@ export const caregiverElderInfoStyles = StyleSheet.create({
 
   // Chart Styles
   chartContainer: {
-    marginBottom: 20,
+    marginBottom: 8,
   },
   chartHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 0,
   },
   chartLabel: {
     fontSize: baseFontSizes.chartLabel,
@@ -136,8 +134,8 @@ export const caregiverElderInfoStyles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 15,
     padding: 20,
-    paddingBottom: 200,
-    marginBottom: 80,
+    paddingBottom: 24,
+    marginBottom: 28,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -198,10 +196,10 @@ export const caregiverElderInfoStyles = StyleSheet.create({
     color: '#374151',
   },
 
-  // Map Styles
+  // Map Styles — fixed height so card wraps the map without extra empty space
   mapContainer: {
     width: '100%',
-    height: 200,
+    height: 220,
     borderRadius: 10,
     overflow: 'hidden',
     position: 'relative',
@@ -217,6 +215,30 @@ export const caregiverElderInfoStyles = StyleSheet.create({
     top: '50%',
     left: '50%',
     transform: [{ translateX: -16 }, { translateY: -32 }],
+  },
+
+  /** Compact block when elder is not sharing GPS (no full-height gray map slot) */
+  locationUnavailableCard: {
+    marginTop: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    backgroundColor: '#f9fafb',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  locationUnavailableTitle: {
+    fontSize: 14,
+    fontFamily: 'BalooBhaijaan2_600SemiBold',
+    color: '#4b5563',
+    lineHeight: 20,
+  },
+  locationUnavailableSubtitle: {
+    fontSize: 12,
+    fontFamily: 'BalooBhaijaan2_400Regular',
+    color: '#9ca3af',
+    marginTop: 6,
+    lineHeight: 18,
   },
 });
 
@@ -263,6 +285,14 @@ export const createCaregiverElderInfoStyles = (getFontSize: (size: number) => nu
     coordinatesText: {
       ...caregiverElderInfoStyles.coordinatesText,
       fontSize: getFontSize(baseFontSizes.coordinatesText),
+    },
+    locationUnavailableTitle: {
+      ...caregiverElderInfoStyles.locationUnavailableTitle,
+      fontSize: getFontSize(14),
+    },
+    locationUnavailableSubtitle: {
+      ...caregiverElderInfoStyles.locationUnavailableSubtitle,
+      fontSize: getFontSize(12),
     },
   });
 };

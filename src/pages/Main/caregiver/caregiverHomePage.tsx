@@ -403,13 +403,6 @@ export default function CaregiverHomepage({ navigation }: Props) {
                 <Text style={caregiverHomeStyles.vitalLabel}>Heart Rate:</Text>
                 <View style={caregiverHomeStyles.vitalValueContainer}>
                   <Text style={caregiverHomeStyles.vitalValue}>{elder.risk === 'Not Wearing' ? '-' : `${elder.heartRate} Bpm`}</Text>
-                  {elder.risk !== 'Not Wearing' && (elder.heartRate > 100 || elder.heartRate < 60) && (
-                    <Image 
-                        source={hexagonIcon} 
-                        style={{ width: 12, height: 12, tintColor: elder.heartRate > 100 ? '#ef4444' : '#f59e0b'}}
-                        resizeMode="contain"
-                    />
-                  )}
                 </View>
               </View>
 
@@ -417,13 +410,6 @@ export default function CaregiverHomepage({ navigation }: Props) {
                 <Text style={caregiverHomeStyles.vitalLabel}>SpO2:</Text>
                 <View style={caregiverHomeStyles.vitalValueContainer}>
                   <Text style={caregiverHomeStyles.vitalValue}>{elder.risk === 'Not Wearing' ? '-' : `${elder.spO2}%`}</Text>
-                  {elder.risk !== 'Not Wearing' && elder.spO2 < 95 && (
-                    <Image 
-                        source={hexagonIcon} 
-                        style={{ width: 12, height: 12, tintColor: "#ef4444" }}
-                        resizeMode="contain"
-                    />
-                  )}
                 </View>
               </View>
             </View>

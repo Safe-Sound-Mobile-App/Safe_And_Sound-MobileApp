@@ -24,9 +24,10 @@ service cloud.firestore {
       allow delete: if false;
     }
     
-    // Elders: เฉพาะเจ้าของหรือ caregiver ที่มี relationship กับ elder นี้ถึงจะอ่านได้
+    // Elders: ให้ authenticated users อ่านได้เพื่อค้นหา (สำหรับ Add Elder feature)
+    // แต่ข้อมูลส่วนตัวจะถูกจำกัดในแอปพลิเคชัน
     match /elders/{userId} {
-      allow read: if isAuthenticated() && (isOwner(userId) || hasActiveRelationship(request.auth.uid, userId));
+      allow read: if isAuthenticated();
       allow write: if isOwner(userId);
     }
     

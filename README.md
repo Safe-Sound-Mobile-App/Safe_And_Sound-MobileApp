@@ -216,13 +216,6 @@ Health data is retrieved from Firebase `healthData` collection:
 - **Map Display**: Location preview with coordinates
 - **External Maps**: Tap to open location in Google Maps
 
-## 📈 Charts and Graphs
-
-- **Data Points**: Displays 7 latest values for Heart Rate and SpO2
-- **Real-time Updates**: Charts update automatically when new data arrives
-- **Data Source**: `healthData/{elderId}/records` subcollection
-- **Fallback**: Shows axes only when status is "Not Wearing" or no data available
-
 ## 🚦 Running the App
 
 ### Development Mode

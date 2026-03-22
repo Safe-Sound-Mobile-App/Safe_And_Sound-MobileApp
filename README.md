@@ -155,21 +155,16 @@ Safe_And_Sound-MobileApp/
   - Health status indicators (Normal/Warning/Danger/Not Wearing)
 - **Elder Detail Page**: 
   - Detailed health information
-  - Interactive charts (7 latest data points)
   - Location tracking with map preview
   - Copy coordinates functionality
-- **Emergency Alerts**: Receive and manage emergency notifications
-- **Chat**: Direct messaging with elders
 - **Notifications**: View and manage all notifications
 - **Profile Management**: Edit caregiver profile
 
 ### Elder Features
 
 - **Caregiver List**: View all assigned caregivers
-- **Health Data Input**: Manual health data entry (Heart Rate, SpO2, Gyroscope)
 - **Location Tracking**: Automatic location tracking (requires permission)
 - **Emergency Button**: Send emergency alerts to all caregivers
-- **Chat**: Direct messaging with caregivers
 - **Notifications**: View relationship requests and notifications
 - **Profile Management**: Edit elder profile
 
@@ -179,7 +174,6 @@ The app uses Firestore real-time listeners to automatically update:
 
 - **Health Data**: Status, Heart Rate, SpO2, Gyroscope status
 - **Location**: Current GPS coordinates
-- **Charts**: Latest 7 data points for Heart Rate and SpO2 trends
 - **Notifications**: New alerts and messages
 
 Updates occur automatically without requiring page refresh or navigation.

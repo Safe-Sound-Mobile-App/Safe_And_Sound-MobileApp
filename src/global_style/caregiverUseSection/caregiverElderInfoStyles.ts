@@ -92,13 +92,13 @@ export const caregiverElderInfoStyles = StyleSheet.create({
     elevation: 3,
   },
   vitalItem: {
-    marginBottom: 20,
+    marginBottom: 10,
   },
   vitalLabel: {
     fontSize: baseFontSizes.vitalLabel,
     fontFamily: 'BalooBhaijaan2_400Regular',
     color: '#374151',
-    marginBottom: 5,
+    marginBottom: 0,
   },
   vitalValueRow: {
     flexDirection: 'row',
@@ -113,12 +113,12 @@ export const caregiverElderInfoStyles = StyleSheet.create({
 
   // Chart Styles
   chartContainer: {
-    marginBottom: 20,
+    marginBottom: 8,
   },
   chartHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 0,
   },
   chartLabel: {
     fontSize: baseFontSizes.chartLabel,

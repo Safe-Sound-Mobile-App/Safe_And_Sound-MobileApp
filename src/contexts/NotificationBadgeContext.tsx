@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import auth from '@react-native-firebase/auth';
 import {
   getUserProfile,
-  listenToCaregiverSentRequests,
   getPendingCaregiverRequests,
   listenToNotifications,
 } from '../services/firestore';
@@ -41,14 +40,9 @@ export const NotificationBadgeProvider = ({ children }: { children: ReactNode })
         let unsubPending: (() => void) | null = null;
 
         if (role === 'caregiver') {
-          unsubSent = listenToCaregiverSentRequests(
-            firebaseUser.uid,
-            (requests) => {
-              hasPending = requests.some((r) => r.status === 'pending');
-              updateBadge();
-            },
-            () => {}
-          );
+          // For caregiver: badge should reflect unread notifications only.
+          // Pending *outgoing* sent requests should not keep the badge "stuck"
+          // after user reads the notifications list.
         } else if (role === 'elder') {
           unsubPending = getPendingCaregiverRequests(
             firebaseUser.uid,

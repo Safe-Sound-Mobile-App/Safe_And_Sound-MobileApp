@@ -6,13 +6,11 @@ import {
   SafeAreaView,
   Image,
   ScrollView,
-  Dimensions,
   ActivityIndicator,
   Alert,
   Linking,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { LineChart } from 'react-native-chart-kit';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
 import GradientHeader from '../../../header/GradientHeader';
@@ -27,8 +25,6 @@ const triangleIcon = require('../../../../assets/icons/alert/triangle-exclamatio
 const copyIcon = require('../../../../assets/icons/copy.png');
 const mapMarkerIcon = require('../../../../assets/icons/map-marker.png');
 const defaultElderImage = require('../../../../assets/icons/elder.png');
-
-const screenWidth = Dimensions.get('window').width;
 
 export type ElderDetailData = {
   id: string;
@@ -323,38 +319,6 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
 
   const isNotWearing = elderData.risk === 'Not Wearing';
 
-  const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#ffffff',
-    backgroundGradientTo: '#ffffff',
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(239, 68, 68, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(55, 65, 81, ${opacity})`,
-    style: { borderRadius: 16 },
-    propsForDots: { r: '4', strokeWidth: '2', stroke: '#ef4444' },
-  };
-
-  const toValidChartData = (arr: number[], fallback: number[], safeDefault: number): number[] => {
-    const valid = arr.map((n) => Number(n)).filter((n) => isFinite(n) && n >= 0);
-    if (valid.length >= 2 && valid.some((n) => n > 0)) return valid;
-    const fb = fallback.map((n) => Number(n)).filter((n) => isFinite(n) && n > 0);
-    if (fb.length >= 2) return [fb[0], fb[1]];
-    return [safeDefault, safeDefault];
-  };
-  const heartData = toValidChartData(elderData.heartRateHistory, [elderData.heartRate, elderData.heartRate], 60);
-  const spO2Data = toValidChartData(elderData.spO2History, [elderData.spO2, elderData.spO2], 98);
-
-  const ChartAxesOnly = ({ label }: { label: string }) => (
-    <View style={caregiverElderInfoStyles.chartContainer}>
-      <Text style={caregiverElderInfoStyles.chartLabel}>{label}</Text>
-      <View style={[caregiverElderInfoStyles.chart, { height: 120, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, justifyContent: 'center', alignItems: 'center' }]}>
-        <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 1, backgroundColor: '#e5e7eb' }} />
-        <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 1, backgroundColor: '#e5e7eb' }} />
-        <Text style={{ color: '#9ca3af', fontSize: 12 }}>No data</Text>
-      </View>
-    </View>
-  );
-
   return (
     <SafeAreaView style={caregiverElderInfoStyles.container}>
       <GradientHeader />
@@ -387,9 +351,13 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
 
         <View style={caregiverElderInfoStyles.vitalSignsCard}>
           <View style={caregiverElderInfoStyles.vitalItem}>
-            <Text style={caregiverElderInfoStyles.vitalLabel}>Gyroscope Status:</Text>
             <View style={caregiverElderInfoStyles.vitalValueRow}>
-              <Text style={caregiverElderInfoStyles.vitalValue}>{isNotWearing ? '-' : elderData.gyroscope}</Text>
+              <Text style={caregiverElderInfoStyles.vitalLabel} numberOfLines={1}>
+                Gyroscope Status:
+              </Text>
+              <Text style={[caregiverElderInfoStyles.vitalValue, { marginLeft: 8 }]} numberOfLines={1}>
+                {isNotWearing ? '-' : elderData.gyroscope}
+              </Text>
               {!isNotWearing && elderData.gyroscope !== 'Normal' && (
                 <Image source={hexagonIcon} style={{ width: 12, height: 12, tintColor: '#f59e0b', marginLeft: 6 }} resizeMode="contain" />
               )}
@@ -398,44 +366,24 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
 
           {isNotWearing ? (
             <>
-              <ChartAxesOnly label="Heart Rate: -" />
-              <ChartAxesOnly label="SpO2: -" />
+              <View style={caregiverElderInfoStyles.chartContainer}>
+                <Text style={caregiverElderInfoStyles.chartLabel}>Heart Rate: -</Text>
+              </View>
+              <View style={caregiverElderInfoStyles.chartContainer}>
+                <Text style={caregiverElderInfoStyles.chartLabel}>SpO2: -</Text>
+              </View>
             </>
           ) : (
             <>
               <View style={caregiverElderInfoStyles.chartContainer}>
                 <View style={caregiverElderInfoStyles.chartHeader}>
                   <Text style={caregiverElderInfoStyles.chartLabel}>Heart Rate: {elderData.heartRate} Bpm</Text>
-                  {(elderData.heartRate > 100 || elderData.heartRate < 60) && (
-                    <Image source={hexagonIcon} style={{ width: 12, height: 12, tintColor: elderData.heartRate > 100 ? '#ef4444' : '#f59e0b' }} resizeMode="contain" />
-                  )}
                 </View>
-                <LineChart
-                  data={{ labels: [], datasets: [{ data: heartData }] }}
-                  width={screenWidth - 80}
-                  height={120}
-                  chartConfig={chartConfig}
-                  bezier
-                  style={caregiverElderInfoStyles.chart}
-                  withInnerLines withOuterLines withVerticalLines={false} withHorizontalLines withDots withShadow={false}
-                />
               </View>
               <View style={caregiverElderInfoStyles.chartContainer}>
                 <View style={caregiverElderInfoStyles.chartHeader}>
                   <Text style={caregiverElderInfoStyles.chartLabel}>SpO2: {elderData.spO2}%</Text>
-                  {elderData.spO2 < 95 && elderData.spO2 > 0 && (
-                    <Image source={hexagonIcon} style={{ width: 12, height: 12, tintColor: '#ef4444' }} resizeMode="contain" />
-                  )}
                 </View>
-                <LineChart
-                  data={{ labels: [], datasets: [{ data: spO2Data }] }}
-                  width={screenWidth - 80}
-                  height={120}
-                  chartConfig={chartConfig}
-                  bezier
-                  style={caregiverElderInfoStyles.chart}
-                  withInnerLines withOuterLines withVerticalLines={false} withHorizontalLines withDots withShadow={false}
-                />
               </View>
             </>
           )}

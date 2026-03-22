@@ -10,7 +10,15 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList, MainTabParamList } from "../../../App";
 import auth from '@react-native-firebase/auth';
-import { listenToNotifications, getPendingCaregiverRequests, respondToCaregiverRequest, markNotificationAsRead, Notification } from '../../../services/firestore';
+import {
+    listenToNotifications,
+    getPendingCaregiverRequests,
+    respondToCaregiverRequest,
+    markNotificationAsRead,
+    getUserProfile,
+    sendEmergencyAlert,
+    Notification,
+} from '../../../services/firestore';
 
 // --- Icons ---
 const notificationIcon = require('../../../../assets/icons/navbar/notification.png');
@@ -104,6 +112,52 @@ export default function ElderNotification({ navigation }: Props) {
         } else {
             Alert.alert("Error", result.error || 'Failed to decline request');
         }
+    };
+
+    const handleEmergency = async () => {
+        const currentUser = auth().currentUser;
+        if (!currentUser) {
+            Alert.alert('Error', 'No authenticated user found');
+            return;
+        }
+
+        Alert.alert(
+            'Emergency Alert',
+            'Are you sure you want to send an emergency alert to all your caregivers?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Send Alert',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const profileResult = await getUserProfile(currentUser.uid);
+                            if (!profileResult.success || !profileResult.data) {
+                                Alert.alert('Error', 'Failed to get user profile');
+                                return;
+                            }
+
+                            const elderName = `${profileResult.data.firstName} ${profileResult.data.lastName}`;
+
+                            const result = await sendEmergencyAlert(currentUser.uid, elderName);
+
+                            if (result.success) {
+                                Alert.alert(
+                                    'Alert Sent!',
+                                    'Emergency alert has been sent to all your caregivers.',
+                                    [{ text: 'OK' }]
+                                );
+                            } else {
+                                Alert.alert('Error', result.error || 'Failed to send emergency alert');
+                            }
+                        } catch (error) {
+                            console.error('Emergency alert error:', error);
+                            Alert.alert('Error', 'An unexpected error occurred');
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     // --- Handlers: Activities ---
@@ -238,8 +292,10 @@ export default function ElderNotification({ navigation }: Props) {
         <SafeAreaView style={elderNotificationStyles.container}>
             <GradientHeader title="Safe & Sound" />
 
+            {/* paddingBottom matches Elder Home — space for floating Emergency above tab bar */}
             <ScrollView
                 style={elderNotificationStyles.scrollContainer}
+                contentContainerStyle={{ paddingBottom: 40 }}
                 showsVerticalScrollIndicator={false}
             >
                 {/* Title Section */}
@@ -351,12 +407,12 @@ export default function ElderNotification({ navigation }: Props) {
                 </View>
             </ScrollView>
 
-            {/* Emergency Button */}
+            {/* Emergency: same absolute bottom as Elder Home / Profile (styles.emergencyContainer = bottom 20) */}
             <View style={elderNotificationStyles.emergencyContainer}>
                 <TouchableOpacity
                     style={elderNotificationStyles.emergencyButton}
                     activeOpacity={0.8}
-                    onPress={() => console.log('Emergency pressed')} // Replace with navigation logic
+                    onPress={handleEmergency}
                 >
                     <Text style={elderNotificationStyles.emergencyText}>Emergency</Text>
                 </TouchableOpacity>

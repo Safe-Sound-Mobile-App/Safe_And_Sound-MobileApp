@@ -467,6 +467,25 @@ export const updateElderLocation = async (
   }
 };
 
+/** Call when elder turns off GPS or revokes location permission so caregivers do not see stale coordinates. */
+export const clearElderLocation = async (elderId: string): Promise<ServiceResult> => {
+  try {
+    await firestore()
+      .collection('elders')
+      .doc(elderId)
+      .update({
+        currentLocation: null,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      });
+    return { success: true };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message || 'Failed to clear location',
+    };
+  }
+};
+
 // ========== Caregiver Functions ==========
 
 /**

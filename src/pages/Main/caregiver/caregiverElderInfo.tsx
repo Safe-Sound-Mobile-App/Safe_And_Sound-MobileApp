@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,10 @@ import {
   ActivityIndicator,
   Alert,
   Linking,
+  StyleSheet,
+  Platform,
 } from 'react-native';
+import Constants from 'expo-constants';
 import * as Clipboard from 'expo-clipboard';
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RootStackParamList } from "../../../App";
@@ -36,7 +39,7 @@ export type ElderDetailData = {
   spO2: number;
   fullName: string;
   age: number;
-  location: { latitude: number; longitude: number } | null;
+  location: { latitude: number; longitude: number; accuracy: number | null } | null;
   heartRateHistory: number[];
   spO2History: number[];
 };
@@ -57,6 +60,225 @@ const defaultDetailData: ElderDetailData = {
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, "caregiverElderInfo">;
+
+/** Google Maps–style blue dot colors */
+const LOC_DOT_FILL = '#4285F4';
+const LOC_HALO_FILL = 'rgba(66, 133, 244, 0.22)';
+const LOC_HALO_STROKE = 'rgba(66, 133, 244, 0.45)';
+
+/** Static map logical size (max 640 per side for Static API); scale=2 for sharpness on phones */
+const STATIC_MAP_W = 600;
+const STATIC_MAP_H = 220;
+
+function clampLocationAccuracyMeters(accuracy: number | null | undefined): number {
+  const raw = typeof accuracy === 'number' && accuracy > 0 ? accuracy : 45;
+  return Math.min(120, Math.max(18, raw));
+}
+
+/** Approximate halo diameter (px) from GPS accuracy at ~zoom 16 for mid-latitudes */
+function accuracyToHaloSizePx(accuracy: number | null | undefined): number {
+  const m = clampLocationAccuracyMeters(accuracy);
+  const d = Math.round(m * 1.1);
+  return Math.min(140, Math.max(56, d));
+}
+
+function readNonEmptyString(v: unknown): string | null {
+  return typeof v === 'string' && v.trim().length > 0 ? v.trim() : null;
+}
+
+/**
+ * `android.config.googleMaps` from app.json is not always present on `Constants.expoConfig`
+ * in prebuild / dev client; `expo.extra.googleMapsApiKey` is reliably embedded for JS.
+ */
+function getExpoGoogleMapsApiKey(): string | null {
+  const cfg = Constants.expoConfig;
+  const fromExtra = readNonEmptyString(
+    (cfg?.extra as { googleMapsApiKey?: string } | undefined)?.googleMapsApiKey
+  );
+  if (fromExtra) return fromExtra;
+
+  const androidKey = readNonEmptyString(
+    (cfg?.android as { config?: { googleMaps?: { apiKey?: string } } } | undefined)?.config
+      ?.googleMaps?.apiKey
+  );
+  if (androidKey) return androidKey;
+
+  const iosKey = readNonEmptyString(
+    (cfg?.ios as { config?: { googleMaps?: { apiKey?: string } } } | undefined)?.config
+      ?.googleMaps?.apiKey
+  );
+  if (iosKey) return iosKey;
+
+  const manifest = Constants.manifest as
+    | {
+        extra?: { googleMapsApiKey?: string };
+        android?: { config?: { googleMaps?: { apiKey?: string } } };
+      }
+    | null
+    | undefined;
+  return (
+    readNonEmptyString(manifest?.extra?.googleMapsApiKey) ??
+    readNonEmptyString(manifest?.android?.config?.googleMaps?.apiKey) ??
+    null
+  );
+}
+
+/**
+ * Raster preview — works inside ScrollView where MapView tiles often stay blank on Android.
+ * Enable "Maps Static API" for the same key in Google Cloud if the image fails to load.
+ */
+function buildStaticMapPreviewUri(latitude: number, longitude: number): string | null {
+  const key = getExpoGoogleMapsApiKey();
+  if (!key) return null;
+  const q = new URLSearchParams({
+    center: `${latitude},${longitude}`,
+    zoom: '16',
+    size: `${STATIC_MAP_W}x${STATIC_MAP_H}`,
+    scale: '2',
+    maptype: 'roadmap',
+    key,
+  });
+  return `https://maps.googleapis.com/maps/api/staticmap?${q.toString()}`;
+}
+
+const locationBlueDotStyles = StyleSheet.create({
+  dot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: LOC_DOT_FILL,
+    borderWidth: 3,
+    borderColor: '#ffffff',
+    zIndex: 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.22,
+        shadowRadius: 2,
+      },
+      android: { elevation: 4 },
+      default: {},
+    }),
+  },
+});
+
+type LocationPreviewProps = {
+  latitude: number;
+  longitude: number;
+  accuracy: number | null;
+  onOpenMaps: () => void;
+};
+
+function ElderLocationMapPreview({ latitude, longitude, accuracy, onOpenMaps }: LocationPreviewProps) {
+  const previewUri = useMemo(
+    () => buildStaticMapPreviewUri(latitude, longitude),
+    [latitude, longitude]
+  );
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageLoaded(false);
+    setImageError(false);
+  }, [previewUri]);
+
+  const haloSize = accuracyToHaloSizePx(accuracy);
+  const showOverlay = Boolean(previewUri && imageLoaded && !imageError);
+
+  return (
+    <View style={caregiverElderInfoStyles.mapContainer} collapsable={false}>
+      {previewUri && !imageError ? (
+        <Image
+          key={`${latitude},${longitude}`}
+          source={{ uri: previewUri }}
+          style={StyleSheet.absoluteFillObject}
+          resizeMode="cover"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageError(true)}
+        />
+      ) : null}
+
+      {(!previewUri || imageError) && (
+        <View
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              backgroundColor: '#e8eaed',
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: 20,
+            },
+          ]}
+        >
+          <Text style={{ color: '#5f6368', fontSize: 13, textAlign: 'center' }}>
+            {imageError
+              ? 'โหลดแผนที่ไม่สำเร็จ — เปิด Maps Static API สำหรับ API key นี้ใน Google Cloud หรือแตะปุ่มด้านล่าง'
+              : 'ไม่พบ API key สำหรับแผนที่'}
+          </Text>
+        </View>
+      )}
+
+      {previewUri && !imageLoaded && !imageError && (
+        <View
+          style={[
+            StyleSheet.absoluteFillObject,
+            { justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f3f4' },
+          ]}
+        >
+          <ActivityIndicator size="large" color="#008080" />
+        </View>
+      )}
+
+      {showOverlay && (
+        <View
+          pointerEvents="none"
+          style={[
+            StyleSheet.absoluteFillObject,
+            { justifyContent: 'center', alignItems: 'center' },
+          ]}
+        >
+          <View
+            style={{
+              position: 'absolute',
+              width: haloSize,
+              height: haloSize,
+              borderRadius: haloSize / 2,
+              backgroundColor: LOC_HALO_FILL,
+              borderWidth: 1,
+              borderColor: LOC_HALO_STROKE,
+            }}
+          />
+          <View style={locationBlueDotStyles.dot} />
+        </View>
+      )}
+
+      <TouchableOpacity
+        onPress={onOpenMaps}
+        activeOpacity={0.9}
+        style={{
+          position: 'absolute',
+          bottom: 10,
+          right: 10,
+          backgroundColor: 'rgba(0, 128, 128, 0.95)',
+          paddingVertical: 8,
+          paddingHorizontal: 12,
+          borderRadius: 8,
+          flexDirection: 'row',
+          alignItems: 'center',
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.25,
+          shadowRadius: 3.84,
+          elevation: 5,
+        }}
+      >
+        <Image source={mapMarkerIcon} style={{ width: 16, height: 16, tintColor: '#fff' }} resizeMode="contain" />
+        <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 6 }}>Tap to open</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
 
 export default function CaregiverElderInfo({ navigation, route }: Props) {
   const { elderId } = route.params;
@@ -135,7 +357,13 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
           spO2,
           fullName,
           age: elder.age ?? 0,
-          location: loc ? { latitude: loc.latitude, longitude: loc.longitude } : null,
+          location: loc
+            ? {
+                latitude: loc.latitude,
+                longitude: loc.longitude,
+                accuracy: loc.accuracy ?? null,
+              }
+            : null,
           heartRateHistory: heartRateHistory.length >= 7 ? heartRateHistory.slice(-7) : heartRateHistory,
           spO2History: spO2History.length >= 7 ? spO2History.slice(-7) : spO2History,
         });
@@ -243,6 +471,44 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
     };
   }, [elderId]);
 
+  // Real-time elder location from Firestore (same source as elder device updates)
+  useEffect(() => {
+    let cancelled = false;
+    const unsub = firestore()
+      .collection('elders')
+      .doc(elderId)
+      .onSnapshot(
+        (docSnap) => {
+          if (cancelled) return;
+          const d = docSnap.data();
+          const loc = d?.currentLocation;
+          setElderData((prev) => {
+            if (!prev) return prev;
+            if (
+              !loc ||
+              typeof loc.latitude !== 'number' ||
+              typeof loc.longitude !== 'number'
+            ) {
+              return { ...prev, location: null };
+            }
+            return {
+              ...prev,
+              location: {
+                latitude: loc.latitude,
+                longitude: loc.longitude,
+                accuracy: typeof loc.accuracy === 'number' ? loc.accuracy : null,
+              },
+            };
+          });
+        },
+        (err) => console.error('Elder location listener:', err)
+      );
+    return () => {
+      cancelled = true;
+      unsub();
+    };
+  }, [elderId]);
+
   const getRiskColor = (risk: string) => {
     switch (risk) {
       case 'Danger': return '#ef4444';
@@ -325,6 +591,7 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
       <ScrollView
         style={caregiverElderInfoStyles.scrollContainer}
         showsVerticalScrollIndicator={false}
+        nestedScrollEnabled
       >
         <View style={[caregiverElderInfoStyles.elderCard, { backgroundColor: cardBackgroundColor }]}>
           <View style={caregiverElderInfoStyles.cardHeader}>
@@ -415,113 +682,32 @@ export default function CaregiverElderInfo({ navigation, route }: Props) {
                     <Image source={copyIcon} style={{ width: 16, height: 16, tintColor: '#374151' }} resizeMode="contain" />
                   </TouchableOpacity>
                 </View>
-                <TouchableOpacity 
-                  style={caregiverElderInfoStyles.mapContainer} 
-                  onPress={openInMaps}
-                  activeOpacity={0.9}
-                >
-                  <View style={{ width: '100%', height: '100%', backgroundColor: '#d1fae5', position: 'relative', overflow: 'hidden', borderRadius: 10 }}>
-                    {/* Styled map preview with marker */}
-                    <View style={{
-                      width: '100%',
-                      height: '100%',
-                      backgroundColor: '#d1fae5',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      position: 'relative',
-                    }}>
-                      {/* Decorative grid pattern */}
-                      <View style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        opacity: 0.15,
-                        backgroundColor: 'transparent',
-                        borderStyle: 'dashed',
-                        borderWidth: 1,
-                        borderColor: '#059669',
-                      }} />
-                      
-                      {/* Map marker */}
-                      <View style={{ alignItems: 'center', zIndex: 1 }}>
-                        <Image 
-                          source={mapMarkerIcon} 
-                          style={{ width: 56, height: 56, tintColor: '#ef4444' }} 
-                          resizeMode="contain" 
-                        />
-                        <View style={{
-                          marginTop: 12,
-                          backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                          paddingVertical: 8,
-                          paddingHorizontal: 14,
-                          borderRadius: 8,
-                          shadowColor: '#000',
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.1,
-                          shadowRadius: 4,
-                          elevation: 3,
-                          minWidth: 180,
-                        }}>
-                          <Text style={{ color: '#374151', fontSize: 11, fontFamily: 'monospace', textAlign: 'center', fontWeight: '600' }}>
-                            {elderData.location.latitude.toFixed(6)}
-                          </Text>
-                          <Text style={{ color: '#374151', fontSize: 11, fontFamily: 'monospace', textAlign: 'center', fontWeight: '600' }}>
-                            {elderData.location.longitude.toFixed(6)}
-                          </Text>
-                        </View>
-                      </View>
-                      
-                      {/* Compass icon */}
-                      <View style={{
-                        position: 'absolute',
-                        top: 10,
-                        right: 10,
-                        width: 36,
-                        height: 36,
-                        borderRadius: 18,
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 1 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 2,
-                        elevation: 2,
-                      }}>
-                        <Text style={{ fontSize: 20 }}>🧭</Text>
-                      </View>
-                    </View>
-                    <View style={{
-                      position: 'absolute',
-                      bottom: 10,
-                      right: 10,
-                      backgroundColor: 'rgba(0, 128, 128, 0.95)',
-                      paddingVertical: 8,
-                      paddingHorizontal: 12,
-                      borderRadius: 8,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.25,
-                      shadowRadius: 3.84,
-                      elevation: 5,
-                    }}>
-                      <Image source={mapMarkerIcon} style={{ width: 16, height: 16, tintColor: '#fff' }} resizeMode="contain" />
-                      <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600', marginLeft: 6 }}>Tap to open</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
+                <ElderLocationMapPreview
+                  latitude={elderData.location.latitude}
+                  longitude={elderData.location.longitude}
+                  accuracy={elderData.location.accuracy}
+                  onOpenMaps={openInMaps}
+                />
               </>
             ) : (
-              <>
-                <Text style={caregiverElderInfoStyles.infoValue}>-</Text>
-                <View style={[caregiverElderInfoStyles.mapContainer, caregiverElderInfoStyles.mapImage, { backgroundColor: '#e5e7eb', justifyContent: 'center', alignItems: 'center', minHeight: 200 }]}>
-                  <Text style={{ color: '#6b7280', fontSize: 14, textAlign: 'center', paddingHorizontal: 24 }}>ไม่ได้เปิด location</Text>
+              <View style={caregiverElderInfoStyles.locationUnavailableCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+                  <Image
+                    source={mapMarkerIcon}
+                    style={{ width: 22, height: 22, tintColor: '#9ca3af', marginRight: 12, marginTop: 1 }}
+                    resizeMode="contain"
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={caregiverElderInfoStyles.locationUnavailableTitle}>
+                      No location shared
+                    </Text>
+                    <Text style={caregiverElderInfoStyles.locationUnavailableSubtitle}>
+                      The elder may have turned off GPS or location permission for this app. Coordinates
+                      will appear again when they turn sharing back on.
+                    </Text>
+                  </View>
                 </View>
-              </>
+              </View>
             )}
           </View>
         </View>

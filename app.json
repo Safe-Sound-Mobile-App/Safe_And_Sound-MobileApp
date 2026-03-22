@@ -27,7 +27,12 @@
         "foregroundImage": "./assets/appicon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCzNp3zxGzePEVcex4PaNm9cH4KoYRR5mE"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -66,7 +71,8 @@
     "extra": {
       "eas": {
         "projectId": "86decaf3-633d-45a8-bc39-99fbb39e5479"
-      }
+      },
+      "googleMapsApiKey": "AIzaSyCzNp3zxGzePEVcex4PaNm9cH4KoYRR5mE"
     },
     "owner": "safe-and-sound",
     "updates": {
